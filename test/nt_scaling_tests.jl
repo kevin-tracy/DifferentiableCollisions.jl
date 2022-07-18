@@ -83,10 +83,10 @@ W = DCD.NT(W_ort, W_soc, W_ort_inv, W_soc_inv)
 
 # NT * NT
 W_squared = W1*W1
-W² = DCD.NT(W_ort, W_soc, W_ort_inv, W_soc_inv)
-DCD.square_NT!(W²)
-W_squared_2 = DCD.SA_block_diag(W².W_ort, W².W_soc)
-
+W² = DCD.NT(W_ort^2, W_soc^2, W_ort_inv^2, W_soc_inv^2)
+# DCD.square_NT!(W²)
+# W_squared_2 = DCD.SA_block_diag(W².W_ort, W².W_soc)
+#
 W_squared_inv = inv(W_squared)
 W_squared_inv2 = DCD.SA_block_diag(W².W_ort_inv, W².W_soc_inv)
 @test norm(W_squared_inv - W_squared_inv2) < 1e-13
@@ -102,6 +102,21 @@ x1 = W1\(W1\b)
 x2 = W\(W\b)
 x3 = W²\b
 x4 = W_squared\b
+@test norm(x1 - x2) < 1e-13
+@test norm(x1 - x3) < 1e-13
+@test norm(x1 - x4) < 1e-13
+
+# linear system solves W\B
+B = @SMatrix randn(n_ort + n_soc,4)
+x1 = W1\B
+x2 = W\B
+@test norm(x1 - x2) < 1e-13
+
+# linear system solves W²\b
+x1 = W1\(W1\B)
+x2 = W\(W\B)
+x3 = W²\B
+x4 = W_squared\B
 @test norm(x1 - x2) < 1e-13
 @test norm(x1 - x3) < 1e-13
 @test norm(x1 - x4) < 1e-13

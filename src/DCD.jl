@@ -1,8 +1,9 @@
+__precompile__(true)
 module DCD
 
-# greet() = print("Hello World!")
 include("coneqp/nt_scaling.jl")
+include("coneqp/soc_utils.jl")
 
-export *
+export *, \
 
 end # module

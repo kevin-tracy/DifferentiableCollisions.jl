@@ -2,21 +2,21 @@ using LinearAlgebra
 using StaticArrays
 using BenchmarkTools
 
-mutable struct NT{n_ort,n_soc,n_soc2,T}
+struct NT{n_ort,n_soc,n_soc2,T}
     W_ort::Diagonal{T, SVector{n_ort, T}}
     W_soc::SMatrix{n_soc,n_soc,T,n_soc2}
     W_ort_inv::Diagonal{T, SVector{n_ort, T}}
     W_soc_inv::SMatrix{n_soc,n_soc,T,n_soc2}
 end
 
-@inline function square_NT!(W::NT{n,m,e,T}) where {n,m,e,T}
-    # NT{n,m,e,T}(W.W_ort^2,W.W_soc^2,W.W_ort_inv^2, W.W_soc_inv^2)
-    W.W_ort = W.W_ort^2
-    W.W_soc = W.W_soc^2
-    W.W_ort_inv = W.W_ort_inv^2
-    W.W_soc_inv = W.W_soc_inv^2
-    return nothing
-end
+# @inline function square_NT!(W::NT{n,m,e,T}) where {n,m,e,T}
+#     # NT{n,m,e,T}(W.W_ort^2,W.W_soc^2,W.W_ort_inv^2, W.W_soc_inv^2)
+#     W.W_ort = W.W_ort^2
+#     W.W_soc = W.W_soc^2
+#     W.W_ort_inv = W.W_ort_inv^2
+#     W.W_soc_inv = W.W_soc_inv^2
+#     return nothing
+# end
 
 # now let's do W * matrix
 @inline function NT_mat_mul(W1::NT{n,m,e,T},G::SMatrix{r,c,T,rc}) where {n,m,e,T,r,c,rc}
@@ -40,6 +40,13 @@ end
     vcat(W1.W_ort_inv*G[idx_ort], W1.W_soc_inv*G[idx_soc])
 end
 
+@inline function NT_lin_solve_mat(W1::NT{n,m,e,T},G::SMatrix{r,c,T,rc}) where {n,m,e,T,r,c,rc}
+    idx_ort = SVector{n}(1:n)
+    idx_soc = SVector{m}((n + 1):(n + m))
+
+    vcat(W1.W_ort_inv*G[idx_ort,:], W1.W_soc_inv*G[idx_soc,:])
+end
+
 # import Base: *
 # @inline (*)(W1::NT{n,m,e,T},W2::NT{n,m,e,T}) where {n,m,e,T} = NT_matmul(W1::NT{n,m,e,T},W2::NT{n,m,e,T})
 # @inline (*)(W1::NT{n,m,e,T},G::SMatrix{r,c,T,rc}) where {n,m,e,T,r,c,rc} = NT_matmul(W1::NT{n,m,e,T},G::SMatrix{r,c,T,rc})
@@ -57,6 +64,9 @@ end
 end
 @inline function Base.:\(W1::NT{n,m,e,T},G::SVector{r,T}) where {n,m,e,T,r}
     NT_lin_solve(W1::NT{n,m,e,T},G::SVector{r,T})
+end
+@inline function Base.:\(W1::NT{n,m,e,T},G::SMatrix{r,c,T,rc}) where {n,m,e,T,r,c,rc}
+    NT_lin_solve_mat(W1::NT{n,m,e,T},G::SMatrix{r,c,T,rc})
 end
 
 @inline function ort_nt_scaling(s_ort::SVector{n,T}, z_ort::SVector{n,T}) where {n,T}
@@ -100,6 +110,13 @@ function SA_block_diag(W1::Diagonal{T, SVector{n, T}}, W2::SMatrix{m,m,T,m2}) wh
     vcat(top,bot)
 end
 
+function nt_scaling(s::SVector{ns,T},z::SVector{ns,T},idx_ort::SVector{n_ort,Ti},idx_soc::SVector{n_soc,Ti}) where {ns,T,n_ort,n_soc,Ti}
+    W_ort, W_ort_inv = DCD.ort_nt_scaling(s[idx_ort], z[idx_ort])
+    W_soc, W_soc_inv = DCD.soc_nt_scaling(s[idx_soc], z[idx_soc])
+    W = DCD.NT(W_ort, W_soc, W_ort_inv, W_soc_inv)
+    W² = DCD.NT(W_ort^2, W_soc^2, W_ort_inv^2, W_soc_inv^2)
+    return W, W²
+end
 
 # function ttt()
 #

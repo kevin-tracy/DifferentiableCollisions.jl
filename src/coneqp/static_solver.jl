@@ -50,6 +50,9 @@ end
     end
 end
 @inline function linesearch(x::SVector{n,T},Δx::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc::SVector{n_soc,Ti}) where {n,T,n_ort,n_soc,Ti}
+    idx_ort = SVector{n_ort}(1:n_ort)
+    idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
+
     x_ort  =  x[idx_ort]
     Δx_ort = Δx[idx_ort]
     x_soc  =  x[idx_soc]
@@ -57,41 +60,79 @@ end
 
     min(ort_linesearch(x_ort,Δx_ort), soc_linesearch(x_soc, Δx_soc))
 end
+@inline function bring2cone(r::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc::SVector{n_soc,Ti}) where {n,n_ort,n_soc,T,Ti}
+    alpha = -1;
 
-# function solve_ls(dx,dz,ds,W,W²,λ,G, idx_ort, idx_soc)
-#     bx = dx
-#     bz = dz - W*(DCD.inverse_cone_product(λ),ds,idx_ort, idx_soc)
-#     idx_x = 1:length(dx)
-#     idx_z = (length(dx) +1):(length(dx + length(dz)))
+    idx_ort = SVector{n_ort}(1:n_ort)
+    idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
+    r_ort = r[idx_ort]
+    r_soc = r[idx_soc]
+
+    if any(r_ort .<= 0)
+        alpha = -minimum(r_ort);
+    end
+
+    res = r_soc[1] - norm(r_soc[SVector{n_soc-1}(2:n_soc)])
+    if  (res <= 0)
+        alpha = max(alpha,-res)
+    end
+
+    if alpha < 0
+        return r
+    else
+        return r + (1 + alpha)*DCD.gen_e(idx_ort, idx_soc)
+    end
+end
+@inline function initialize(c::SVector{nx,T},
+                            G::SMatrix{ns,nx,T,nsnx},
+                            h::SVector{ns,T},
+                            idx_ort::SVector{n_ort,Ti},
+                            idx_soc::SVector{n_soc,Ti}) where {nx,ns,nsnx,n_ort,n_soc,T,Ti}
+    F = cholesky(Symmetric(G'*G))
+    x̂ = F\(G'*h)
+    s̃ = G*x̂ - h
+    ŝ = bring2cone(s̃,idx_ort,idx_soc)
+
+    x = F\(-c)
+    z̃ = G*x
+
+    ẑ = bring2cone(z̃,idx_ort,idx_soc)
+
+    x̂,ŝ,ẑ
+end
+
+
+
+
 
 function solve_socp(c::SVector{nx,T},
                     G::SMatrix{ns,nx,T,nsnx},
                     h::SVector{ns,T},
                     idx_ort::SVector{n_ort,Ti},
                     idx_soc::SVector{n_soc,Ti};
-                    pdip_tol::T=1e-12,
-                    verbose::Bool = true) where {nx,ns,nsnx,n_ort,n_soc,T,Ti}
+                    pdip_tol::T=1e-4,
+                    verbose::Bool = false) where {nx,ns,nsnx,n_ort,n_soc,T,Ti}
 
-    x = @SVector ones(nx)
-    s = [(@SVector ones(n_ort + 1)); .1*(@SVector ones(n_soc - 1))]
-    z = [(@SVector ones(n_ort + 1)); .1*(@SVector ones(n_soc - 1))]
+    # x = @SVector ones(nx)
+    # s = [(@SVector ones(n_ort + 1)); .1*(@SVector ones(n_soc - 1))]
+    # z = [(@SVector ones(n_ort + 1)); .1*(@SVector ones(n_soc - 1))]
+    x,s,z = initialize(c,G,h,idx_ort,idx_soc)
 
     if verbose
         @printf "iter     objv        gap       |Gx+s-h|      κ      step\n"
         @printf "---------------------------------------------------------\n"
     end
 
+    e = DCD.gen_e(idx_ort, idx_soc)
+
     for main_iter = 1:20
 
         # evaluate NT scaling
-        # W, W² = DCD.nt_scaling(s,z,idx_ort,idx_soc)
-        # W_ort, W_ort_inv = DCD.ort_nt_scaling(s[idx_ort], z[idx_ort])
-        # W_soc, W_soc_inv = DCD.soc_nt_scaling(s[idx_soc], z[idx_soc])
-        # W = DCD.SA_block_diag(W_ort, W_soc)
         w_ort        = DCD.ort_nt_scaling_lite(s[idx_ort],z[idx_ort])
         w_soc, η_soc = DCD.soc_nt_scaling_lite(s[idx_soc],z[idx_soc])
         W = DCD.NT_lite(w_ort, w_soc, η_soc)
 
+        # cache normalized variables
         λ = W*z
         λλ = DCD.cone_product(λ,λ,idx_ort,idx_soc)
 
@@ -100,19 +141,14 @@ function solve_socp(c::SVector{nx,T},
         rz = s + G*x - h
         μ = dot(s,z)/(n_ort + 1)
         if μ < pdip_tol
-            # @info "Success"
             return x,s,z
         end
 
         # affine step
         bx = -rx
         λ_ds = DCD.inverse_cone_product(λ,-λλ,idx_ort, idx_soc)
-        bz = -rz - W*(λ_ds)
-        # F = cholesky(Symmetric(G'*(W\(W\G))))
-        # Δxa = F\(bx + G'*(W\(W\bz)))
-        # Δza = W\(W\(G*Δxa - bz))
+        bz̃ = W\(-rz - W*(λ_ds))
         G̃ = W\G
-        bz̃ = W\bz
         F = cholesky(Symmetric(G̃'*G̃))
         Δxa = F\(bx + G̃'*bz̃)
         Δza = W\(G̃*Δxa - bz̃)
@@ -124,16 +160,9 @@ function solve_socp(c::SVector{nx,T},
         σ = max(0, min(1,ρ))^3
 
         # centering and correcting step
-        e = DCD.gen_e(idx_ort, idx_soc)
         ds = -λλ - DCD.cone_product(W\Δsa, W*Δza,idx_ort, idx_soc) + σ*μ*e
         λ_ds = DCD.inverse_cone_product(λ,ds,idx_ort, idx_soc)
-        bz = -rz - W*(λ_ds)
-        # Δx = F\(bx + G'*(W²\bz))
-        # Δz = W²\(G*Δx - bz)
-        # Δx = F\(bx + G'*(W\(W\bz)))
-        # Δz = W\(W\(G*Δx - bz))
-        # Δs = W*(λ_ds - W*Δz)
-        bz̃ = W\bz
+        bz̃ = W\(-rz - W*(λ_ds))
         Δx = F\(bx + G̃'*bz̃)
         Δz = W\(G̃*Δx - bz̃)
         Δs = W*(λ_ds - W*Δz)
@@ -167,12 +196,12 @@ function tt()
 
     # @show size(G)
 
-    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc)
+    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc;verbose = true)
     # @show x
     # @show s
     # @show z
 
-    # @btime solve_socp($c,$G,$h,$idx_ort,$idx_soc)
+    @btime solve_socp($c,$G,$h,$idx_ort,$idx_soc; verbose = false)
     # x = @SVector randn(5)
     # s = [ones(θ.n_ort + 1); 0.01*ones(θ.n_soc-1) ]
     # z = copy(s) + 0.01*abs.(randn(length(s)))

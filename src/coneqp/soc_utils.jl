@@ -13,6 +13,9 @@ using BenchmarkTools
 end
 
 @inline function cone_product(s::SVector{n,T},z::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc::SVector{n_soc, Ti}) where {n,T,n_ort,n_soc,Ti}
+    idx_ort = SVector{n_ort}(1:n_ort)
+    idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
+
     s_ort = s[idx_ort]
     z_ort = z[idx_ort]
     s_soc = s[idx_soc]
@@ -35,6 +38,9 @@ end
 end
 
 @inline function inverse_cone_product(λ::SVector{n,T},v::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc::SVector{n_soc, Ti}) where {n,T,n_ort,n_soc,Ti}
+    idx_ort = SVector{n_ort}(1:n_ort)
+    idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
+
     λ_ort = λ[idx_ort]
     v_ort = v[idx_ort]
     λ_soc = λ[idx_soc]
@@ -46,6 +52,8 @@ end
 end
 
 @inline function gen_e(idx_ort::SVector{n_ort,T}, idx_soc::SVector{n_soc,T}) where {n_ort, n_soc, T}
+    idx_ort = SVector{n_ort}(1:n_ort)
+    idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
     e1 = @SVector ones(n_ort)
     e2 = vcat(1.0, (@SVector zeros(n_soc - 1)))
     [e1;e2]

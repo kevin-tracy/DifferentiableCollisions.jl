@@ -84,7 +84,7 @@ end
 
 function solve_ls(dx,dz,ds,W,λ,θ)
     bx = dx
-    bz = dz - W'*(inverse_cone_prod(λ,ds,θ))
+    bz = dz - W*(inverse_cone_prod(λ,ds,θ))
 
     # full way of solving
     # sol = [0*I θ.G'; θ.G -W'*W]\[bx;bz]
@@ -92,11 +92,12 @@ function solve_ls(dx,dz,ds,W,λ,θ)
     # Δz = sol[θ.idx_s] # this mismatch is intentional
 
     # cholesky way of solving
-    Δx = cholesky(Symmetric(θ.G'*(inv(W)^2)*θ.G))\(bx + θ.G'*inv(W)^2*bz)
-    Δz = (inv(W)^2)*(θ.G*Δx - bz)
+    # Δx = cholesky(Symmetric(θ.G'*(inv(W)^2)*θ.G))\(bx + θ.G'*inv(W)^2*bz)
+    Δx = ((θ.G'*(W\(W\θ.G))))\(bx + θ.G'*(W\(W\bz)))
+    Δz = W\(W\(θ.G*Δx - bz))
 
     # this is the same for both
-    Δs = W'*(inverse_cone_prod(λ,ds,θ) - W*Δz)
+    Δs = W*(inverse_cone_prod(λ,ds,θ) - W*Δz)
     return Δx, Δs, Δz
 end
 
@@ -156,9 +157,9 @@ function tt()
 
     θ = build_problem()
 
-    x = randn(5)
-    s = [ones(θ.n_ort + 1); 0.01*ones(θ.n_soc-1) ]
-    z = copy(s) + 0.01*abs.(randn(length(s)))
+    x = zeros(5)
+    s = [ones(θ.n_ort + 1); 0.1*ones(θ.n_soc-1) ]
+    z = copy(s)
     # x,s,z = init_coneqp(θ)
 
     @printf "iter     objv        gap       |Gx+s-h|      κ      step\n"
@@ -185,7 +186,7 @@ function tt()
         rx = G'*z + c
         rz = s + G*x - h
         μ = dot(s,z)/m
-        if μ < 1e-4
+        if μ < 1e-10
             @info "success"
             break
         end

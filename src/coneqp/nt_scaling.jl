@@ -74,8 +74,14 @@ end
 @inline function Base.:\(W1::NT{n,m,e,T},G::SVector{r,T}) where {n,m,e,T,r}
     NT_lin_solve(W1::NT{n,m,e,T},G::SVector{r,T})
 end
+@inline function Base.:\(W::NT_lite{n_ort,n_soc,T}, z::SVector{n,T}) where {n_ort,n_soc,n,T}
+    NT_lin_solve_lite(W::NT_lite{n_ort,n_soc,T}, z::SVector{n,T})
+end
 @inline function Base.:\(W1::NT{n,m,e,T},G::SMatrix{r,c,T,rc}) where {n,m,e,T,r,c,rc}
     NT_lin_solve_mat(W1::NT{n,m,e,T},G::SMatrix{r,c,T,rc})
+end
+@inline function Base.:\(W::NT_lite{n_ort,n_soc,T}, Z::SMatrix{r,c,T,rc}) where {n_ort,n_soc,r,c,rc,T}
+    NT_lin_solve_mat_lite(W::NT_lite{n_ort,n_soc,T}, Z::SMatrix{r,c,T,rc})
 end
 
 @inline function ort_nt_scaling(s_ort::SVector{n,T}, z_ort::SVector{n,T}) where {n,T}
@@ -121,6 +127,36 @@ end
     Wz = W.η_soc*[w̄0*z0 + ζ; z1 + (z0 + ζ/(1 + w̄0))*w̄1]
 
     [W.w_ort .* z[idx_ort]; Wz]
+end
+@inline function NT_lin_solve_lite(W::NT_lite{n_ort,n_soc,T}, z::SVector{n,T})::SVector{n,T} where {n_ort,n_soc,n,T}
+    idx_ort = SVector{n_ort}(1:n_ort)
+    idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
+
+    w̄ = W.w_soc
+    v_idx = SVector{n_soc-1}(2:n_soc)
+    w̄0 = w̄[1]
+    w̄1 = w̄[v_idx]
+    z_soc = z[idx_soc]
+    z0 = z_soc[1]
+    z1 = z_soc[v_idx]
+    ζ = dot(w̄1,z1)
+    Winvz = (1/W.η_soc)*[w̄0*z0 - ζ; z1 + (-z0 + ζ/(1 + w̄0))*w̄1]
+
+    [z[idx_ort] ./ W.w_ort ; Winvz]
+end
+@inline @generated function NT_lin_solve_mat_lite(W::NT_lite{n_ort,n_soc,T}, Z::SMatrix{r,c,T,rc}) where {n_ort,n_soc,r,c,rc,T}
+
+    # here we generate the following:
+    # vcat(
+    # NT_lin_solve_lite(W, Z[:,1]),
+    # NT_lin_solve_lite(W, Z[:,2]),
+    # NT_lin_solve_lite(W, Z[:,3]),
+    # ... # continued up to c
+    # )
+    xi = [:(NT_lin_solve_lite(W, Z[:,$i])) for i = 1:c]
+    quote
+        hcat($(xi...))
+    end
 end
 @inline function soc_nt_scaling(s_soc::SVector{n,T}, z_soc::SVector{n,T}) where {n,T}
     # J = Diagonal(SA[1,-1,-1,-1])

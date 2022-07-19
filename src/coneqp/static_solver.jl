@@ -40,7 +40,7 @@ end
     v_idx = SVector{n-1}(2:n)
     yv = y[v_idx]
     Δv = Δ[v_idx]
-    ν = max(y[1]^2 - dot(yv,yv), 1e-25) + 1e-14
+    ν = max(y[1]^2 - dot(yv,yv), 1e-25) + 1e-13
     ζ = y[1]*Δ[1] - dot(yv,Δv)
     ρ = [ζ/ν; (Δv/sqrt(ν) - ( ( (ζ/sqrt(ν)) + Δ[1] )/( y[1]/sqrt(ν) + 1 ) )*(yv/ν))]
     if norm(ρ[v_idx])>ρ[1]
@@ -58,15 +58,21 @@ end
     min(ort_linesearch(x_ort,Δx_ort), soc_linesearch(x_soc, Δx_soc))
 end
 
+# function solve_ls(dx,dz,ds,W,W²,λ,G, idx_ort, idx_soc)
+#     bx = dx
+#     bz = dz - W*(DCD.inverse_cone_product(λ),ds,idx_ort, idx_soc)
+#     idx_x = 1:length(dx)
+#     idx_z = (length(dx) +1):(length(dx + length(dz)))
+
 function solve_socp(c::SVector{nx,T},
                     G::SMatrix{ns,nx,T,nsnx},
                     h::SVector{ns,T},
                     idx_ort::SVector{n_ort,Ti},
                     idx_soc::SVector{n_soc,Ti};
                     pdip_tol::T=1e-4,
-                    verbose::Bool = true) where {nx,ns,nsnx,n_ort,n_soc,T,Ti}
+                    verbose::Bool = false) where {nx,ns,nsnx,n_ort,n_soc,T,Ti}
 
-    x = @SVector zeros(nx)
+    x = @SVector ones(nx)
     s = [(@SVector ones(n_ort + 1)); .1*(@SVector ones(n_soc - 1))]
     z = [(@SVector ones(n_ort + 1)); .1*(@SVector ones(n_soc - 1))]
 
@@ -78,7 +84,14 @@ function solve_socp(c::SVector{nx,T},
     for main_iter = 1:20
 
         # evaluate NT scaling
-        W, W² = DCD.nt_scaling(s,z,idx_ort,idx_soc)
+        # W, W² = DCD.nt_scaling(s,z,idx_ort,idx_soc)
+        # W_ort, W_ort_inv = DCD.ort_nt_scaling(s[idx_ort], z[idx_ort])
+        # W_soc, W_soc_inv = DCD.soc_nt_scaling(s[idx_soc], z[idx_soc])
+        # W = DCD.SA_block_diag(W_ort, W_soc)
+        w_ort        = DCD.ort_nt_scaling_lite(s[idx_ort],z[idx_ort])
+        w_soc, η_soc = DCD.soc_nt_scaling_lite(s[idx_soc],z[idx_soc])
+        W = DCD.NT_lite(w_ort, w_soc, η_soc)
+
         λ = W*z
         λλ = DCD.cone_product(λ,λ,idx_ort,idx_soc)
 
@@ -95,9 +108,12 @@ function solve_socp(c::SVector{nx,T},
         bx = -rx
         λ_ds = DCD.inverse_cone_product(λ,-λλ,idx_ort, idx_soc)
         bz = -rz - W*(λ_ds)
-        F = cholesky(Symmetric(G'*(W²\G)))
-        Δxa = F\(bx + G'*(W²\bz))
-        Δza = W²\(G*Δxa - bz)
+        F = cholesky(Symmetric(G'*(W\(W\G))))
+        # F = lu(G'*(W\(W\G)))
+        # Δxa = F\(bx + G'*(W²\bz))
+        # Δza = W²\(G*Δxa - bz)
+        Δxa = ((G'*(W\(W\G))))\(bx + G'*(W\(W\bz)))
+        Δza = W\(W\(G*Δxa - bz))
         Δsa = W*(λ_ds - W*Δza)
 
         # linesearch on affine step
@@ -110,8 +126,10 @@ function solve_socp(c::SVector{nx,T},
         ds = -λλ - DCD.cone_product(W\Δsa, W*Δza,idx_ort, idx_soc) + σ*μ*e
         λ_ds = DCD.inverse_cone_product(λ,ds,idx_ort, idx_soc)
         bz = -rz - W*(λ_ds)
-        Δx = F\(bx + G'*(W²\bz))
-        Δz = W²\(G*Δx - bz)
+        # Δx = F\(bx + G'*(W²\bz))
+        # Δz = W²\(G*Δx - bz)
+        Δx = ((G'*(W\(W\G))))\(bx + G'*(W\(W\bz)))
+        Δz = W\(W\(G*Δx - bz))
         Δs = W*(λ_ds - W*Δz)
 
         # final line search (.99 to avoid hitting edge of cone)
@@ -143,9 +161,12 @@ function tt()
 
     # @show size(G)
 
-    x,y,z = solve_socp(c,G,h,idx_ort,idx_soc)
+    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc)
+    # @show x
+    # @show s
+    # @show z
 
-    # @btime solve_socp($c,$G,$h,$idx_ort,$idx_soc)
+    @btime solve_socp($c,$G,$h,$idx_ort,$idx_soc)
     # x = @SVector randn(5)
     # s = [ones(θ.n_ort + 1); 0.01*ones(θ.n_soc-1) ]
     # z = copy(s) + 0.01*abs.(randn(length(s)))
@@ -207,3 +228,14 @@ function tt()
 end
 
 tt()
+
+
+# from JuMP
+# value.(x) = [-2.397923630017413, -0.6291513676894855, 0.20605503080463847, 1.4203056811905659, -0.9231986608396786]
+# dual.(c1) = [-1.9554403536818505e-9, -0.2438804212000268, -1.6925680654196474e-9, -2.6847818967476124e-9, -1.3124465760691362e-8, -1.0454388716239396, -7.97945869568145e-9, -1.2279337598158235e-8, -9.486007400989269e-9, -2.005727928458962e-8, -2.542072084308074e-9]
+# dual.(c2) = [0.5739857780227104, 0.025243236422295225, -0.0641647911626764, 0.5698292087092]
+#
+# # from my solver
+# x = [-2.4006291983958365, -0.6259193374250461, 0.20658738792595446, 1.4204354647371262, -0.9232544772695983]
+# s = [1.8465393229538756, 3.036841467925623e-5, 2.138386721540207, 1.3477135955964736, 0.2737042086631979, 3.8080150533293094e-5, 0.45251076319271183, 0.29386888356623425, 0.38096388834972683, 0.17951522621899138, 1.4204372583422715, 0.8522630724568573, -0.04014124845094621, 0.09851765827722245, -0.8454527229369907]
+# z = [1.424024776179708e-5, 0.24381211118536178, 2.0382479480547845e-6, 2.604515327170819e-5, 0.00011546380169133973, 1.045337364247085, 4.7570559062809535e-5, 3.99388486387077e-5, 5.2520566553717046e-5, 4.742724571084713e-5, 1.5398129737978408e-5, 0.573926996626629, 0.025187705334615958, -0.06416353097637557, 0.5697424327871496]

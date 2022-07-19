@@ -35,8 +35,32 @@ let
     @test norm(p1 - p2) < 1e-13
     @test norm(p1 - p3) < 1e-13
 
+    # @btime $W * $b
+    # @btime $Wnt * $b
+    # @btime $Wnt_lite * $b
 
-    @btime $W * $b
-    @btime $Wnt * $b
-    @btime $Wnt_lite * $b
+    # solve linear systems
+    p1 = W \ b
+    p2 = Wnt \ b
+    p3 = Wnt_lite \ b
+
+    @test norm(p1 - p2) < 1e-13
+    @test norm(p1 - p3) < 1e-13
+
+    # solve linear system with a matrix
+    B = @SMatrix randn(n_ort + n_soc,4)
+    p1 = W \ B
+    p2 = Wnt \ B
+    p3 = Wnt_lite \ B
+
+    @btime $W \ $b
+    @btime $Wnt \ $b
+    @btime $Wnt_lite \ $b
+
+    @test norm(p1 - p2) < 1e-13
+    @test norm(p1 - p3) < 1e-13
+
+    @btime $W \ $B
+    @btime $Wnt \ $B
+    @btime $Wnt_lite \ $B
 end

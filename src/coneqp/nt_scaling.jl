@@ -144,6 +144,30 @@ end
 
     [z[idx_ort] ./ W.w_ort ; Winvz]
 end
+@inline function squared_solve(W::NT_lite{n_ort,n_soc,T}, z::SVector{n,T})::SVector{n,T} where {n_ort,n_soc,n,T}
+    idx_ort = SVector{n_ort}(1:n_ort)
+    idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
+
+    w̄ = W.w_soc
+    v_idx = SVector{n_soc-1}(2:n_soc)
+    w̄0 = w̄[1]
+    w̄1 = w̄[v_idx]
+
+    # first solve
+    z_soc = z[idx_soc]
+    z0 = z_soc[1]
+    z1 = z_soc[v_idx]
+    ζ = dot(w̄1,z1)
+    Winvz = (1/W.η_soc)*[w̄0*z0 - ζ; z1 + (-z0 + ζ/(1 + w̄0))*w̄1]
+
+    # second solve
+    z0 = Winvz[1]
+    z1 = Winvz[v_idx]
+    ζ = dot(w̄1,z1)
+    W²invz = (1/W.η_soc)*[w̄0*z0 - ζ; z1 + (-z0 + ζ/(1 + w̄0))*w̄1]
+
+    [z[idx_ort] ./ (W.w_ort).^2 ; W²invz]
+end
 @inline @generated function NT_lin_solve_mat_lite(W::NT_lite{n_ort,n_soc,T}, Z::SMatrix{r,c,T,rc}) where {n_ort,n_soc,r,c,rc,T}
 
     # here we generate the following:

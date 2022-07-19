@@ -69,8 +69,8 @@ function solve_socp(c::SVector{nx,T},
                     h::SVector{ns,T},
                     idx_ort::SVector{n_ort,Ti},
                     idx_soc::SVector{n_soc,Ti};
-                    pdip_tol::T=1e-4,
-                    verbose::Bool = false) where {nx,ns,nsnx,n_ort,n_soc,T,Ti}
+                    pdip_tol::T=1e-12,
+                    verbose::Bool = true) where {nx,ns,nsnx,n_ort,n_soc,T,Ti}
 
     x = @SVector ones(nx)
     s = [(@SVector ones(n_ort + 1)); .1*(@SVector ones(n_soc - 1))]
@@ -108,12 +108,14 @@ function solve_socp(c::SVector{nx,T},
         bx = -rx
         λ_ds = DCD.inverse_cone_product(λ,-λλ,idx_ort, idx_soc)
         bz = -rz - W*(λ_ds)
-        F = cholesky(Symmetric(G'*(W\(W\G))))
-        # F = lu(G'*(W\(W\G)))
-        # Δxa = F\(bx + G'*(W²\bz))
-        # Δza = W²\(G*Δxa - bz)
-        Δxa = ((G'*(W\(W\G))))\(bx + G'*(W\(W\bz)))
-        Δza = W\(W\(G*Δxa - bz))
+        # F = cholesky(Symmetric(G'*(W\(W\G))))
+        # Δxa = F\(bx + G'*(W\(W\bz)))
+        # Δza = W\(W\(G*Δxa - bz))
+        G̃ = W\G
+        bz̃ = W\bz
+        F = cholesky(Symmetric(G̃'*G̃))
+        Δxa = F\(bx + G̃'*bz̃)
+        Δza = W\(G̃*Δxa - bz̃)
         Δsa = W*(λ_ds - W*Δza)
 
         # linesearch on affine step
@@ -128,8 +130,12 @@ function solve_socp(c::SVector{nx,T},
         bz = -rz - W*(λ_ds)
         # Δx = F\(bx + G'*(W²\bz))
         # Δz = W²\(G*Δx - bz)
-        Δx = ((G'*(W\(W\G))))\(bx + G'*(W\(W\bz)))
-        Δz = W\(W\(G*Δx - bz))
+        # Δx = F\(bx + G'*(W\(W\bz)))
+        # Δz = W\(W\(G*Δx - bz))
+        # Δs = W*(λ_ds - W*Δz)
+        bz̃ = W\bz
+        Δx = F\(bx + G̃'*bz̃)
+        Δz = W\(G̃*Δx - bz̃)
         Δs = W*(λ_ds - W*Δz)
 
         # final line search (.99 to avoid hitting edge of cone)
@@ -166,7 +172,7 @@ function tt()
     # @show s
     # @show z
 
-    @btime solve_socp($c,$G,$h,$idx_ort,$idx_soc)
+    # @btime solve_socp($c,$G,$h,$idx_ort,$idx_soc)
     # x = @SVector randn(5)
     # s = [ones(θ.n_ort + 1); 0.01*ones(θ.n_soc-1) ]
     # z = copy(s) + 0.01*abs.(randn(length(s)))

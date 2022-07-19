@@ -47,20 +47,28 @@ let
     @test norm(p1 - p2) < 1e-13
     @test norm(p1 - p3) < 1e-13
 
+    # solve them twice now
+    p1 = W \ (W\b)
+    p2 = Wnt \ (W\b)
+    p3 = DCD.squared_solve(Wnt_lite,b)
+
+    @test norm(p1 - p2) < 1e-13
+    @test norm(p1 - p3) < 1e-13
+
     # solve linear system with a matrix
     B = @SMatrix randn(n_ort + n_soc,4)
     p1 = W \ B
     p2 = Wnt \ B
     p3 = Wnt_lite \ B
 
-    @btime $W \ $b
-    @btime $Wnt \ $b
-    @btime $Wnt_lite \ $b
+    # @btime $W \ $b
+    # @btime $Wnt \ $b
+    # @btime $Wnt_lite \ $b
 
     @test norm(p1 - p2) < 1e-13
     @test norm(p1 - p3) < 1e-13
 
-    @btime $W \ $B
-    @btime $Wnt \ $B
-    @btime $Wnt_lite \ $B
+    # @btime $W \ $B
+    # @btime $Wnt \ $B
+    # @btime $Wnt_lite \ $B
 end

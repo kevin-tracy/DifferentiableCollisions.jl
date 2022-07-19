@@ -36,36 +36,11 @@ end
     return α
 end
 
-@inline function solve_ls(dx::SVector{nx,T},
-                  dz::SVector{ns,T},
-                  ds::SVector{ns,T},
-                  W::DCD.NT{n_ort,n_soc,n_soc2,T},
-                  W²::DCD.NT{n_ort,n_soc,n_soc2,T},
-                  λ::SVector{ns,T},
-                  G::SMatrix{ns,nx,T,nsnx},
-                  idx_ort::SVector{n_ort,Ti},
-                  idx_soc::SVector{n_soc,Ti}) where {nx,T,ns,nsnx,n_ort,n_soc,n_soc2,ns_nx,Ti}
-
-                  # solve_ls(-rx,-rz,-λλ,W,W²,λ,G, idx_ort, idx_soc)
-    bx = dx
-    λ_ds = DCD.inverse_cone_product(λ,ds,idx_ort, idx_soc)
-    bz = dz - W*(λ_ds)
-
-    # cholesky way of solving
-    Δx = cholesky(Symmetric(G'*(W²\G)))\(bx + G'*(W²\bz))
-    Δz = W²\(G*Δx - bz)
-
-    # this is the same for both
-    Δs = W*(λ_ds - W*Δz)
-    return Δx, Δs, Δz
-end
-
-
 @inline function soc_linesearch(y::SVector{n,T},Δ::SVector{n,T}) where {n,T}
     v_idx = SVector{n-1}(2:n)
     yv = y[v_idx]
     Δv = Δ[v_idx]
-    ν = max(y[1]^2 - dot(yv,yv), 1e-25) + 1e-13
+    ν = max(y[1]^2 - dot(yv,yv), 1e-25) + 1e-14
     ζ = y[1]*Δ[1] - dot(yv,Δv)
     ρ = [ζ/ν; (Δv/sqrt(ν) - ( ( (ζ/sqrt(ν)) + Δ[1] )/( y[1]/sqrt(ν) + 1 ) )*(yv/ν))]
     if norm(ρ[v_idx])>ρ[1]
@@ -87,16 +62,20 @@ function solve_socp(c::SVector{nx,T},
                     G::SMatrix{ns,nx,T,nsnx},
                     h::SVector{ns,T},
                     idx_ort::SVector{n_ort,Ti},
-                    idx_soc::SVector{n_soc,Ti}) where {nx,ns,nsnx,n_ort,n_soc,T,Ti}
+                    idx_soc::SVector{n_soc,Ti};
+                    pdip_tol::T=1e-4,
+                    verbose::Bool = true) where {nx,ns,nsnx,n_ort,n_soc,T,Ti}
 
     x = @SVector zeros(nx)
-    s = [(@SVector ones(n_ort + 1)); .01*(@SVector ones(n_soc - 1))]
-    z = [(@SVector ones(n_ort + 1)); .01*(@SVector ones(n_soc - 1))]
+    s = [(@SVector ones(n_ort + 1)); .1*(@SVector ones(n_soc - 1))]
+    z = [(@SVector ones(n_ort + 1)); .1*(@SVector ones(n_soc - 1))]
 
-    @printf "iter     objv        gap       |Gx+s-h|      κ      step\n"
-    @printf "---------------------------------------------------------\n"
+    if verbose
+        @printf "iter     objv        gap       |Gx+s-h|      κ      step\n"
+        @printf "---------------------------------------------------------\n"
+    end
 
-    for main_iter = 1:10
+    for main_iter = 1:20
 
         # evaluate NT scaling
         W, W² = DCD.nt_scaling(s,z,idx_ort,idx_soc)
@@ -107,13 +86,12 @@ function solve_socp(c::SVector{nx,T},
         rx = G'*z + c
         rz = s + G*x - h
         μ = dot(s,z)/(n_ort + 1)
-        if μ<1e-4
-            @info "Success"
-            break
+        if μ < pdip_tol
+            # @info "Success"
+            return x,s,z
         end
 
         # affine step
-        # Δxa, Δsa, Δza =  solve_ls(-rx,-rz,-λλ,W,W²,λ,G, idx_ort, idx_soc)
         bx = -rx
         λ_ds = DCD.inverse_cone_product(λ,-λλ,idx_ort, idx_soc)
         bz = -rz - W*(λ_ds)
@@ -122,38 +100,38 @@ function solve_socp(c::SVector{nx,T},
         Δza = W²\(G*Δxa - bz)
         Δsa = W*(λ_ds - W*Δza)
 
-
+        # linesearch on affine step
         αa = min(linesearch(s,Δsa,idx_ort, idx_soc), linesearch(z,Δza,idx_ort, idx_soc))
         ρ = dot(s + αa*Δsa, z + αa*Δza)/dot(s,z)
         σ = max(0, min(1,ρ))^3
 
-        η = 0.0
-        γ = 1.0
-        # e = [ones(length(idx_ort)); gen_e(length(idx_soc))]
+        # centering and correcting step
         e = DCD.gen_e(idx_ort, idx_soc)
-        ds = -λλ - γ*DCD.cone_product(W\Δsa, W*Δza,idx_ort, idx_soc) + σ*μ*e
-
-        bx = -(1 - η)*rx
+        ds = -λλ - DCD.cone_product(W\Δsa, W*Δza,idx_ort, idx_soc) + σ*μ*e
         λ_ds = DCD.inverse_cone_product(λ,ds,idx_ort, idx_soc)
-        bz = (-(1 - η)*rz) - W*(λ_ds)
+        bz = -rz - W*(λ_ds)
         Δx = F\(bx + G'*(W²\bz))
         Δz = W²\(G*Δx - bz)
         Δs = W*(λ_ds - W*Δz)
 
-        # Δx, Δs, Δz = solve_ls(-(1 - η)*rx,-(1 - η)*rz,ds,W,λ,θ)
-        #
+        # final line search (.99 to avoid hitting edge of cone)
         α = min(1,0.99*min(linesearch(s,Δs,idx_ort, idx_soc), 0.99*linesearch(z,Δz,idx_ort, idx_soc)))
-        #
-        @printf("%3d   %10.3e  %9.2e  %9.2e  %9.2e  % 6.4f\n",
-          main_iter, c'*x, μ, norm(G*x + s - h),
-          σ*μ, α)
-        # # @show α
+
+        # take step
         x += α*Δx
         s += α*Δs
         z += α*Δz
 
+        if verbose
+            @printf("%3d   %10.3e  %9.2e  %9.2e  %9.2e  % 6.4f\n",
+              main_iter, c'*x, dot(s,z)/(n_ort + 1), norm(G*x + s - h),
+              norm(DCD.cone_product(W\Δsa, W*Δza,idx_ort, idx_soc) + σ*μ*e), α)
+        end
+
+
 
     end
+    error("pdip failed")
 
 
 end
@@ -163,7 +141,9 @@ function tt()
 
     c,G,h,idx_ort,idx_soc = build_pr()
 
-    solve_socp(c,G,h,idx_ort,idx_soc)
+    # @show size(G)
+
+    x,y,z = solve_socp(c,G,h,idx_ort,idx_soc)
 
     # @btime solve_socp($c,$G,$h,$idx_ort,$idx_soc)
     # x = @SVector randn(5)

@@ -123,14 +123,14 @@ let
     @test norm(x1 - x3) < 1e-13
     @test norm(x1 - x4) < 1e-13
 
-    # NT * matrix
-    G = @SMatrix randn(n_soc + n_ort, 4)
-    O = W1*G
-    O2 = [W_ort*G[idx_ort,:]; W_soc*G[idx_soc,:]]
-    O3 = W*G # overloads to NT_matmul
-
-    @test norm(O - O2) < 1e-13
-    @test norm(O - O3) < 1e-13
+    # NT * matrix NOTE: deprecated
+    # G = @SMatrix randn(n_soc + n_ort, 4)
+    # O = W1*G
+    # O2 = [W_ort*G[idx_ort,:]; W_soc*G[idx_soc,:]]
+    # O3 = W*G # overloads to NT_matmul
+    #
+    # @test norm(O - O2) < 1e-13
+    # @test norm(O - O3) < 1e-13
 
     # NT * vector
     g = @SVector randn(n_soc + n_ort)

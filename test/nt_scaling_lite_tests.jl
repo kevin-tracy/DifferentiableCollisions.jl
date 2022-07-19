@@ -47,13 +47,13 @@ let
     @test norm(p1 - p2) < 1e-13
     @test norm(p1 - p3) < 1e-13
 
-    # solve them twice now
-    p1 = W \ (W\b)
-    p2 = Wnt \ (W\b)
-    p3 = DCD.squared_solve(Wnt_lite,b)
-
-    @test norm(p1 - p2) < 1e-13
-    @test norm(p1 - p3) < 1e-13
+    # # solve them twice now NOTE: deprecated
+    # p1 = W \ (W\b)
+    # p2 = Wnt \ (W\b)
+    # p3 = DCD.squared_solve(Wnt_lite,b)
+    #
+    # @test norm(p1 - p2) < 1e-13
+    # @test norm(p1 - p3) < 1e-13
 
     # solve linear system with a matrix
     B = @SMatrix randn(n_ort + n_soc,4)

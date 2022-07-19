@@ -1,6 +1,3 @@
-using LinearAlgebra
-using StaticArrays
-using BenchmarkTools
 
 @inline function soc_cone_product(u::SVector{n,T},v::SVector{n,T}) where {n,T}
     u0 = u[1]

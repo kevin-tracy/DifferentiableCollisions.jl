@@ -113,9 +113,6 @@ function solve_socp(c::SVector{nx,T},
                     pdip_tol::T=1e-4,
                     verbose::Bool = false) where {nx,ns,nsnx,n_ort,n_soc,T,Ti}
 
-    # x = @SVector ones(nx)
-    # s = [(@SVector ones(n_ort + 1)); .1*(@SVector ones(n_soc - 1))]
-    # z = [(@SVector ones(n_ort + 1)); .1*(@SVector ones(n_soc - 1))]
     x,s,z = initialize(c,G,h,idx_ort,idx_soc)
 
     if verbose

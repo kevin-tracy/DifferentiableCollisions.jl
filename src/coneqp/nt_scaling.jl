@@ -9,6 +9,11 @@ struct NT{n_ort,n_soc,n_soc2,T}
     W_soc_inv::SMatrix{n_soc,n_soc,T,n_soc2}
 end
 
+struct NT_lite{n_ort,n_soc,T}
+    w_ort::SVector{n_ort,T}
+    w_soc::SVector{n_soc,T}
+    η_soc::T
+end
 # @inline function square_NT!(W::NT{n,m,e,T}) where {n,m,e,T}
 #     # NT{n,m,e,T}(W.W_ort^2,W.W_soc^2,W.W_ort_inv^2, W.W_soc_inv^2)
 #     W.W_ort = W.W_ort^2
@@ -32,6 +37,7 @@ end
 
     vcat(W1.W_ort*G[idx_ort], W1.W_soc*G[idx_soc])
 end
+
 
 @inline function NT_lin_solve(W1::NT{n,m,e,T},G::SVector{r,T}) where {n,m,e,T,r}
     idx_ort = SVector{n}(1:n)
@@ -62,6 +68,9 @@ end
 @inline function Base.:*(W1::NT{n,m,e,T},G::SVector{r,T}) where {n,m,e,T,r}
     NT_vec_mul(W1::NT{n,m,e,T},G::SVector{r,T})
 end
+@inline function Base.:*(W::NT_lite{n_ort,n_soc,T}, z::SVector{n,T}) where {n_ort,n_soc,n,T}
+    NT_vec_mul_lite(W::NT_lite{n_ort,n_soc,T}, z::SVector{n,T})
+end
 @inline function Base.:\(W1::NT{n,m,e,T},G::SVector{r,T}) where {n,m,e,T,r}
     NT_lin_solve(W1::NT{n,m,e,T},G::SVector{r,T})
 end
@@ -82,6 +91,36 @@ end
     xs = x[1]
     xv = x[SVector{nx-1}(2:nx)]
     xs^2 - dot(xv,xv)
+end
+@inline function ort_nt_scaling_lite(s_ort::SVector{n,T}, z_ort::SVector{n,T}) where {n,T}
+    sqrt.(s_ort ./ z_ort)
+end
+@inline function soc_nt_scaling_lite(s_soc::SVector{n,T}, z_soc::SVector{n,T}) where {n,T}
+    v_idx = SVector{n-1}(2:n)
+    sres = soc_quad_J(s_soc)
+    zres = soc_quad_J(z_soc)
+    s̄ = s_soc/sqrt(sres)
+    z̄ = z_soc/sqrt(zres)
+    γ = sqrt((1 + dot(z̄,s̄))/2)
+    w̄ = (1/(2*γ))*(s̄ + [z̄[1];-z̄[v_idx]])
+    η = (sres/zres)^(1/4)
+    w̄, η
+end
+@inline function NT_vec_mul_lite(W::NT_lite{n_ort,n_soc,T}, z::SVector{n,T}) where {n_ort,n_soc,n,T}
+    idx_ort = SVector{n_ort}(1:n_ort)
+    idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
+
+    w̄ = W.w_soc
+    v_idx = SVector{n_soc-1}(2:n_soc)
+    w̄0 = w̄[1]
+    w̄1 = w̄[v_idx]
+    z_soc = z[idx_soc]
+    z0 = z_soc[1]
+    z1 = z_soc[v_idx]
+    ζ = dot(w̄1,z1)
+    Wz = W.η_soc*[w̄0*z0 + ζ; z1 + (z0 + ζ/(1 + w̄0))*w̄1]
+
+    [W.w_ort .* z[idx_ort]; Wz]
 end
 @inline function soc_nt_scaling(s_soc::SVector{n,T}, z_soc::SVector{n,T}) where {n,T}
     # J = Diagonal(SA[1,-1,-1,-1])

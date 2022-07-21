@@ -101,10 +101,7 @@ end
     x̂,ŝ,ẑ
 end
 
-
-
-
-
+# TODO: cone product, inverse_cone_product, linesearch, and gen_e should use val
 function solve_socp(c::SVector{nx,T},
                     G::SMatrix{ns,nx,T,nsnx},
                     h::SVector{ns,T},
@@ -124,10 +121,7 @@ function solve_socp(c::SVector{nx,T},
 
     for main_iter = 1:20
 
-        # evaluate NT scaling
-        w_ort        = DCD.ort_nt_scaling_lite(s[idx_ort],z[idx_ort])
-        w_soc, η_soc = DCD.soc_nt_scaling_lite(s[idx_soc],z[idx_soc])
-        W = DCD.NT_lite(w_ort, w_soc, η_soc)
+        W = DCD.calc_NT_scalings(s,z,idx_ort,idx_soc)
 
         # cache normalized variables
         λ = W*z
@@ -191,83 +185,10 @@ function tt()
 
     c,G,h,idx_ort,idx_soc = build_pr()
 
-    # @show size(G)
-
-    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc;verbose = true)
-    # @show x
-    # @show s
-    # @show z
+    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc;verbose = true, pdip_tol = 1e-12)
 
     @btime solve_socp($c,$G,$h,$idx_ort,$idx_soc; verbose = false)
-    # x = @SVector randn(5)
-    # s = [ones(θ.n_ort + 1); 0.01*ones(θ.n_soc-1) ]
-    # z = copy(s) + 0.01*abs.(randn(length(s)))
-    # x,s,z = init_coneqp(θ)
-
-    # @printf "iter     objv        gap       |Gx+s-h|      κ      step\n"
-    # @printf "---------------------------------------------------------\n"
-
-    # c = θ.c
-    # G = θ.G
-    # h = θ.h
-    # idx_x = θ.idx_x
-    # idx_s = θ.idx_s
-    # idx_z = θ.idx_z
-    # idx_ort = θ.idx_ort
-    # idx_soc = θ.idx_soc
-    # m = length(idx_ort) + 1
-    #
-    # for main_iter = 1:30
-    #
-    #     # evaluate NT scaling
-    #     W = nt_scaling(s,z,θ)
-    #     λ = W*z
-    #     λλ = cone_prod(λ,λ,θ)
-    #
-    #     # evaluate residuals
-    #     rx = G'*z + c
-    #     rz = s + G*x - h
-    #     μ = dot(s,z)/m
-    #     if μ < 1e-4
-    #         @info "success"
-    #         break
-    #     end
-    #
-    #     # solve affine
-    #     Δxa, Δsa, Δza =  solve_ls(-rx,-rz,-λλ,W,λ,θ)
-    #
-    #     αa = min(linesearch(s,Δsa,θ), linesearch(z,Δza,θ))
-    #     ρ = dot(s + αa*Δsa, z + αa*Δza)/dot(s,z)
-    #     σ = max(0, min(1,ρ))^3
-    #
-    #     η = 0.0
-    #     γ = 1.0
-    #     e = [ones(length(idx_ort)); gen_e(length(idx_soc))]
-    #     ds = -λλ - γ*cone_prod((W')\Δsa, W*Δza,θ) + σ*μ*e
-    #     Δx, Δs, Δz = solve_ls(-(1 - η)*rx,-(1 - η)*rz,ds,W,λ,θ)
-    #
-    #     α = min(1,0.99*min(linesearch(s,Δs,θ), 0.99*linesearch(z,Δz,θ)))
-    #
-    #     @printf("%3d   %10.3e  %9.2e  %9.2e  %9.2e  % 6.4f\n",
-    #       main_iter, θ.c'*x, μ, norm(θ.G*x + s - θ.h),
-    #       σ*μ, α)
-    #     # @show α
-    #     x += α*Δx
-    #     s += α*Δs
-    #     z += α*Δz
-    # end
 
 end
 
 tt()
-
-
-# from JuMP
-# value.(x) = [-2.397923630017413, -0.6291513676894855, 0.20605503080463847, 1.4203056811905659, -0.9231986608396786]
-# dual.(c1) = [-1.9554403536818505e-9, -0.2438804212000268, -1.6925680654196474e-9, -2.6847818967476124e-9, -1.3124465760691362e-8, -1.0454388716239396, -7.97945869568145e-9, -1.2279337598158235e-8, -9.486007400989269e-9, -2.005727928458962e-8, -2.542072084308074e-9]
-# dual.(c2) = [0.5739857780227104, 0.025243236422295225, -0.0641647911626764, 0.5698292087092]
-#
-# # from my solver
-# x = [-2.4006291983958365, -0.6259193374250461, 0.20658738792595446, 1.4204354647371262, -0.9232544772695983]
-# s = [1.8465393229538756, 3.036841467925623e-5, 2.138386721540207, 1.3477135955964736, 0.2737042086631979, 3.8080150533293094e-5, 0.45251076319271183, 0.29386888356623425, 0.38096388834972683, 0.17951522621899138, 1.4204372583422715, 0.8522630724568573, -0.04014124845094621, 0.09851765827722245, -0.8454527229369907]
-# z = [1.424024776179708e-5, 0.24381211118536178, 2.0382479480547845e-6, 2.604515327170819e-5, 0.00011546380169133973, 1.045337364247085, 4.7570559062809535e-5, 3.99388486387077e-5, 5.2520566553717046e-5, 4.742724571084713e-5, 1.5398129737978408e-5, 0.573926996626629, 0.025187705334615958, -0.06416353097637557, 0.5697424327871496]

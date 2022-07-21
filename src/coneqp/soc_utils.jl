@@ -55,3 +55,19 @@ end
     e2 = vcat(1.0, (@SVector zeros(n_soc - 1)))
     [e1;e2]
 end
+
+@inline function normalize_soc(x::SVector{nx,T}) where {nx, T}
+    x/sqrt(soc_quad_J(x))
+end
+@inline function soc_quad_J(x::SVector{nx,T}) where {nx,T}
+    xs = x[1]
+    xv = x[SVector{nx-1}(2:nx)]
+    xs^2 - dot(xv,xv)
+end
+
+function SA_block_diag(W1::Diagonal{T, SVector{n, T}}, W2::SMatrix{m,m,T,m2}) where {n,m,m2,T}
+    # NOTE: this is only for testing
+    top = hcat(W1, (@SMatrix zeros(n,m)))
+    bot = hcat((@SMatrix zeros(m,n)), W2)
+    vcat(top,bot)
+end

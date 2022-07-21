@@ -9,6 +9,7 @@ using BenchmarkTools
 # include("coneqp/nt_scaling_lite.jl")
 # include("coneqp/nt_scaling.jl")
 include("coneqp/nt_scaling_chol.jl")
+include("coneqp/nt_scaling_chol_2.jl")
 include("coneqp/soc_utils.jl")
 
 export *, \

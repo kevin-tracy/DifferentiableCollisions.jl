@@ -71,3 +71,11 @@ function SA_block_diag(W1::Diagonal{T, SVector{n, T}}, W2::SMatrix{m,m,T,m2}) wh
     bot = hcat((@SMatrix zeros(m,n)), W2)
     vcat(top,bot)
 end
+function block_diag(W1, W2)
+    # NOTE: this is only for testing
+    n = size(W1,1)
+    m = size(W2,1)
+    top = hcat(W1, (@SMatrix zeros(n,m)))
+    bot = hcat((@SMatrix zeros(m,n)), W2)
+    vcat(top,bot)
+end

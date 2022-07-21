@@ -81,7 +81,7 @@ mutable struct Cone{T}
 end
 function build_primitive!(vis, C::Cone{T},cone_name::Symbol; color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
 	W = tan(C.β)*C.H
-	cc = mc.Cone(mc.Point(0,0,α*C.H/2), mc.Point(0, 0.0, -α*C.H/2), α*W)
+	cc = mc.Cone(mc.Point(α*C.H/2,0,0), mc.Point(-α*C.H/2, 0.0, 0), α*W)
 	mc.setobject!(vis[cone_name], cc, mc.MeshPhongMaterial(color = color))
 end
 
@@ -184,48 +184,49 @@ function build_primitive!(vis,P::Polygon{nh,nh2,T}, poly_name::Symbol; color = m
     return nothing
 end
 
-vis = mc.Visualizer()
-open(vis)
+
 function create_n_sided(N,d)
     ns = [ [cos(θ);sin(θ)] for θ = 0:(2*π/N):(2*π*(N-1)/N)]
     A = vcat(transpose.((ns))...)
     b = d*ones(N)
     return SMatrix{N,2}(A), SVector{N}(b)
 end
-let
-
-    # vis = Visualizer()
-
-    @load "polytopes.jld2"
-    polytope = Polytope(SMatrix{8,3}(A2),SVector{8}(0.5*b2))
-    polytope.r = SA[-7,0,0.0]
-    build_primitive!(vis,polytope,:polytope; α = 0.5)
-    update_pose!(vis[:polytope],polytope)
-
-    capsule = Capsule(.3,1.0)
-    capsule.r = SA[-5,0,0.0]
-    build_primitive!(vis,capsule,:capsule; α = 0.5)
-    update_pose!(vis[:capsule],capsule)
-
-    cylinder = Cylinder(.3,1.0)
-    cylinder.r = SA[-3,0,0.0]
-    build_primitive!(vis,cylinder,:cylinder; α = 0.5)
-    update_pose!(vis[:cylinder],cylinder)
-
-	cone = Cone(2.0,deg2rad(25))
-	cone.r = SA[-1,0,0.0]
-	cone.q = SA[cos(pi/4),0,sin(pi/4),0]
-	build_primitive!(vis, cone, :cone; α = 0.5)
-	update_pose!(vis[:cone],cone)
-
-	sphere = Sphere(0.7)
-	sphere.r = SA[1,0,0]
-	build_primitive!(vis,sphere,:sphere; α = 0.5)
-	update_pose!(vis[:sphere], sphere)
-
-	polygon = Polygon(create_n_sided(5,0.8)..., 0.2)
-	polygon.r = SA[3,0,0]
-	build_primitive!(vis,polygon,:polygon; α = 0.5)
-	update_pose!(vis[:polygon], polygon)
-
-end
+# vis = mc.Visualizer()
+# open(vis)
+# let
+#
+#     # vis = Visualizer()
+#
+#     @load "polytopes.jld2"
+#     polytope = Polytope(SMatrix{8,3}(A2),SVector{8}(0.5*b2))
+#     polytope.r = SA[-7,0,0.0]
+#     build_primitive!(vis,polytope,:polytope; α = 0.5)
+#     update_pose!(vis[:polytope],polytope)
+#
+#     capsule = Capsule(.3,1.0)
+#     capsule.r = SA[-5,0,0.0]
+#     build_primitive!(vis,capsule,:capsule; α = 0.5)
+#     update_pose!(vis[:capsule],capsule)
+#
+#     cylinder = Cylinder(.3,1.0)
+#     cylinder.r = SA[-3,0,0.0]
+#     build_primitive!(vis,cylinder,:cylinder; α = 0.5)
+#     update_pose!(vis[:cylinder],cylinder)
+#
+# 	cone = Cone(2.0,deg2rad(25))
+# 	cone.r = SA[-1,0,0.0]
+# 	cone.q = SA[cos(pi/4),0,sin(pi/4),0]
+# 	build_primitive!(vis, cone, :cone; α = 0.5)
+# 	update_pose!(vis[:cone],cone)
+#
+# 	sphere = Sphere(0.7)
+# 	sphere.r = SA[1,0,0]
+# 	build_primitive!(vis,sphere,:sphere; α = 0.5)
+# 	update_pose!(vis[:sphere], sphere)
+#
+# 	polygon = Polygon(create_n_sided(5,0.8)..., 0.2)
+# 	polygon.r = SA[3,0,0]
+# 	build_primitive!(vis,polygon,:polygon; α = 0.5)
+# 	update_pose!(vis[:polygon], polygon)
+#
+# end

@@ -35,19 +35,20 @@ function calc_NT_scalings(s::SVector{n,T}, z::SVector{n,T}, idx_ort::SVector{n_o
     W_ort = sqrt.(s[idx_ort] ./ z[idx_ort])
 
     # SOC
-    s_soc = s[idx_soc]
-    z_soc = z[idx_soc]
-    v_idx = SVector{n_soc-1}(2:n_soc)
-    z̄ = normalize_soc(z_soc)
-    s̄ = normalize_soc(s_soc)
-    γ = sqrt((1 + dot(z̄,s̄))/2)
-    w̄ = (1/(2*γ))*(s̄ + [z̄[1];-z̄[v_idx]])
-    b = (1/(w̄[1] + 1))
-    W̄_top = w̄'
-    W̄_bot = hcat(w̄[v_idx], (I + b*(w̄[v_idx]*w̄[v_idx]')))
-    W̄ = vcat(W̄_top, W̄_bot)
-    η = (soc_quad_J(s_soc)/soc_quad_J(z_soc))^(1/4)
-    W_soc = η*W̄
+    # s_soc = s[idx_soc]
+    # z_soc = z[idx_soc]
+    # v_idx = SVector{n_soc-1}(2:n_soc)
+    # z̄ = normalize_soc(z_soc)
+    # s̄ = normalize_soc(s_soc)
+    # γ = sqrt((1 + dot(z̄,s̄))/2)
+    # w̄ = (1/(2*γ))*(s̄ + [z̄[1];-z̄[v_idx]])
+    # b = (1/(w̄[1] + 1))
+    # W̄_top = w̄'
+    # W̄_bot = hcat(w̄[v_idx], (I + b*(w̄[v_idx]*w̄[v_idx]')))
+    # W̄ = vcat(W̄_top, W̄_bot)
+    # η = (soc_quad_J(s_soc)/soc_quad_J(z_soc))^(1/4)
+    # W_soc = η*W̄
+    W_soc = soc_NT_scaling(s[idx_soc],z[idx_soc])
 
     # W_ort, W_soc
     NT_scaling(W_ort,W_soc,cholesky(W_soc))

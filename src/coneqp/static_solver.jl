@@ -1,29 +1,29 @@
-cd("/Users/kevintracy/.julia/dev/DCD")
-import Pkg; Pkg.activate(".")
-using LinearAlgebra
-using StaticArrays
-using JLD2
-using BenchmarkTools
-using Printf
-import DCD
+# cd("/Users/kevintracy/.julia/dev/DCD")
+# import Pkg; Pkg.activate(".")
+# using LinearAlgebra
+# using StaticArrays
+# using JLD2
+# using BenchmarkTools
+# using Printf
+# import DCD
 
-function build_pr()
-    @load "/Users/kevintracy/.julia/dev/DCD/extras/example_socp.jld2"
-
-    nx = 5
-    n_ort = length(h_ort)
-    n_soc = length(h_soc)
-
-    G = SMatrix{n_ort + n_soc, nx}([G_ort;G_soc])
-    h = SVector{n_ort + n_soc}([h_ort;h_soc])
-
-    idx_ort = SVector{n_ort}(1:n_ort)
-    idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
-
-    c = SA[0,0,0,1,0.0]
-
-    return c, G, h, idx_ort, idx_soc
-end
+# function build_pr()
+#     @load "/Users/kevintracy/.julia/dev/DCD/extras/example_socp.jld2"
+#
+#     nx = 5
+#     n_ort = length(h_ort)
+#     n_soc = length(h_soc)
+#
+#     G = SMatrix{n_ort + n_soc, nx}([G_ort;G_soc])
+#     h = SVector{n_ort + n_soc}([h_ort;h_soc])
+#
+#     idx_ort = SVector{n_ort}(1:n_ort)
+#     idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
+#
+#     c = SA[0,0,0,1,0.0]
+#
+#     return c, G, h, idx_ort, idx_soc
+# end
 
 @inline function ort_linesearch(x::SVector{n,T},dx::SVector{n,T}) where {n,T}
     # this returns the max α ∈ [0,1] st (x + Δx > 0)
@@ -80,7 +80,7 @@ end
     if alpha < 0
         return r
     else
-        return r + (1 + alpha)*DCD.gen_e(idx_ort, idx_soc)
+        return r + (1 + alpha)*gen_e(idx_ort, idx_soc)
     end
 end
 @inline function initialize(c::SVector{nx,T},
@@ -117,15 +117,15 @@ function solve_socp(c::SVector{nx,T},
         @printf "---------------------------------------------------------\n"
     end
 
-    e = DCD.gen_e(idx_ort, idx_soc)
+    e = gen_e(idx_ort, idx_soc)
 
     for main_iter = 1:20
 
-        W = DCD.calc_NT_scalings(s,z,idx_ort,idx_soc)
+        W = calc_NT_scalings(s,z,idx_ort,idx_soc)
 
         # cache normalized variables
         λ = W*z
-        λλ = DCD.cone_product(λ,λ,idx_ort,idx_soc)
+        λλ = cone_product(λ,λ,idx_ort,idx_soc)
 
         # evaluate residuals
         rx = G'*z + c
@@ -137,7 +137,7 @@ function solve_socp(c::SVector{nx,T},
 
         # affine step
         bx = -rx
-        λ_ds = DCD.inverse_cone_product(λ,-λλ,idx_ort, idx_soc)
+        λ_ds = inverse_cone_product(λ,-λλ,idx_ort, idx_soc)
         bz̃ = W\(-rz - W*(λ_ds))
         G̃ = W\G
         F = cholesky(Symmetric(G̃'*G̃))
@@ -151,8 +151,8 @@ function solve_socp(c::SVector{nx,T},
         σ = max(0, min(1,ρ))^3
 
         # centering and correcting step
-        ds = -λλ - DCD.cone_product(W\Δsa, W*Δza,idx_ort, idx_soc) + σ*μ*e
-        λ_ds = DCD.inverse_cone_product(λ,ds,idx_ort, idx_soc)
+        ds = -λλ - cone_product(W\Δsa, W*Δza,idx_ort, idx_soc) + σ*μ*e
+        λ_ds = inverse_cone_product(λ,ds,idx_ort, idx_soc)
         bz̃ = W\(-rz - W*(λ_ds))
         Δx = F\(bx + G̃'*bz̃)
         Δz = W\(G̃*Δx - bz̃)
@@ -169,7 +169,7 @@ function solve_socp(c::SVector{nx,T},
         if verbose
             @printf("%3d   %10.3e  %9.2e  %9.2e  %9.2e  % 6.4f\n",
               main_iter, c'*x, dot(s,z)/(n_ort + 1), norm(G*x + s - h),
-              norm(DCD.cone_product(W\Δsa, W*Δza,idx_ort, idx_soc) + σ*μ*e), α)
+              norm(cone_product(W\Δsa, W*Δza,idx_ort, idx_soc) + σ*μ*e), α)
         end
 
 
@@ -181,14 +181,14 @@ function solve_socp(c::SVector{nx,T},
 end
 
 
-function tt()
-
-    c,G,h,idx_ort,idx_soc = build_pr()
-
-    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc;verbose = true, pdip_tol = 1e-12)
-
-    @btime solve_socp($c,$G,$h,$idx_ort,$idx_soc; verbose = false)
-
-end
-
-tt()
+# function tt()
+# 
+#     c,G,h,idx_ort,idx_soc = build_pr()
+#
+#     x,s,z = solve_socp(c,G,h,idx_ort,idx_soc;verbose = true, pdip_tol = 1e-12)
+#
+#     @btime solve_socp($c,$G,$h,$idx_ort,$idx_soc; verbose = false)
+#
+# end
+#
+# tt()

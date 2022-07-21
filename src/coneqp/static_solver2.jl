@@ -1,25 +1,25 @@
-cd("/Users/kevintracy/.julia/dev/DCD")
-import Pkg; Pkg.activate(".")
-using LinearAlgebra
-using StaticArrays
-using JLD2
-using BenchmarkTools
-using Printf
-import DCD
+# cd("/Users/kevintracy/.julia/dev/DCD")
+# import Pkg; Pkg.activate(".")
+# using LinearAlgebra
+# using StaticArrays
+# using JLD2
+# using BenchmarkTools
+# using Printf
+# import DCD
 
-function build_pr()
-    @load "/Users/kevintracy/.julia/dev/DCD/extras/example_socp_2.jld2"
-
-    nx = 5
-    ns = n_ort + n_soc1 + n_soc2
-    idx_ort = SVector{n_ort}(1:n_ort)
-    idx_soc1 = SVector{n_soc1}((n_ort + 1):(n_ort + n_soc1))
-    idx_soc2 = SVector{n_soc2}((n_ort + n_soc1 + 1):(n_ort + n_soc1 + n_soc2))
-
-    c = SA[0,0,0,1,0.0]
-
-    return c, SMatrix{ns,nx}(G), SVector{ns}(h), idx_ort, idx_soc1, idx_soc2
-end
+# function build_pr()
+#     @load "/Users/kevintracy/.julia/dev/DCD/extras/example_socp_2.jld2"
+#
+#     nx = 5
+#     ns = n_ort + n_soc1 + n_soc2
+#     idx_ort = SVector{n_ort}(1:n_ort)
+#     idx_soc1 = SVector{n_soc1}((n_ort + 1):(n_ort + n_soc1))
+#     idx_soc2 = SVector{n_soc2}((n_ort + n_soc1 + 1):(n_ort + n_soc1 + n_soc2))
+#
+#     c = SA[0,0,0,1,0.0]
+#
+#     return c, SMatrix{ns,nx}(G), SVector{ns}(h), idx_ort, idx_soc1, idx_soc2
+# end
 
 @inline function ort_linesearch(x::SVector{n,T},dx::SVector{n,T}) where {n,T}
     # this returns the max α ∈ [0,1] st (x + Δx > 0)
@@ -86,7 +86,7 @@ end
     if alpha < 0
         return r
     else
-        return r + (1 + alpha)*DCD.gen_e(idx_ort, idx_soc1,idx_soc2)
+        return r + (1 + alpha)*gen_e(idx_ort, idx_soc1,idx_soc2)
     end
 end
 @inline function initialize(c::SVector{nx,T},
@@ -125,15 +125,15 @@ function solve_socp(c::SVector{nx,T},
         @printf "---------------------------------------------------------\n"
     end
 
-    e = DCD.gen_e(idx_ort, idx_soc1,idx_soc2)
+    e = gen_e(idx_ort, idx_soc1,idx_soc2)
 
     for main_iter = 1:20
 
-        W = DCD.calc_NT_scalings(s,z,idx_ort,idx_soc1,idx_soc2)
+        W = calc_NT_scalings(s,z,idx_ort,idx_soc1,idx_soc2)
 
         # cache normalized variables
         λ = W*z
-        λλ = DCD.cone_product(λ,λ,idx_ort,idx_soc1,idx_soc2)
+        λλ = cone_product(λ,λ,idx_ort,idx_soc1,idx_soc2)
 
         # evaluate residuals
         rx = G'*z + c
@@ -145,7 +145,7 @@ function solve_socp(c::SVector{nx,T},
 
         # affine step
         bx = -rx
-        λ_ds = DCD.inverse_cone_product(λ,-λλ,idx_ort,idx_soc1,idx_soc2)
+        λ_ds = inverse_cone_product(λ,-λλ,idx_ort,idx_soc1,idx_soc2)
         bz̃ = W\(-rz - W*(λ_ds))
         G̃ = W\G
         F = cholesky(Symmetric(G̃'*G̃))
@@ -159,8 +159,8 @@ function solve_socp(c::SVector{nx,T},
         σ = max(0, min(1,ρ))^3
 
         # centering and correcting step
-        ds = -λλ - DCD.cone_product(W\Δsa, W*Δza,idx_ort,idx_soc1,idx_soc2) + σ*μ*e
-        λ_ds = DCD.inverse_cone_product(λ,ds,idx_ort,idx_soc1,idx_soc2)
+        ds = -λλ - cone_product(W\Δsa, W*Δza,idx_ort,idx_soc1,idx_soc2) + σ*μ*e
+        λ_ds = inverse_cone_product(λ,ds,idx_ort,idx_soc1,idx_soc2)
         bz̃ = W\(-rz - W*(λ_ds))
         Δx = F\(bx + G̃'*bz̃)
         Δz = W\(G̃*Δx - bz̃)
@@ -177,7 +177,7 @@ function solve_socp(c::SVector{nx,T},
         if verbose
             @printf("%3d   %10.3e  %9.2e  %9.2e  %9.2e  % 6.4f\n",
               main_iter, c'*x, dot(s,z)/(n_ort + 1), norm(G*x + s - h),
-              norm(DCD.cone_product(W\Δsa, W*Δza,idx_ort,idx_soc1,idx_soc2) + σ*μ*e), α)
+              norm(cone_product(W\Δsa, W*Δza,idx_ort,idx_soc1,idx_soc2) + σ*μ*e), α)
         end
 
 
@@ -189,14 +189,14 @@ function solve_socp(c::SVector{nx,T},
 end
 
 
-function tt()
-
-    c,G,h,idx_ort,idx_soc1,idx_soc2 = build_pr()
-
-    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2;verbose = true, pdip_tol = 1e-12)
-
-    @btime solve_socp($c,$G,$h,$idx_ort,$idx_soc1,$idx_soc2; verbose = false)
-
-end
-
-tt()
+# function tt()
+#
+#     c,G,h,idx_ort,idx_soc1,idx_soc2 = build_pr()
+#
+#     x,s,z = solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2;verbose = true, pdip_tol = 1e-12)
+#
+#     @btime solve_socp($c,$G,$h,$idx_ort,$idx_soc1,$idx_soc2; verbose = false)
+#
+# end
+#
+# tt()

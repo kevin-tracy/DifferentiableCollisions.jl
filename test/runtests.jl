@@ -3,6 +3,7 @@ using LinearAlgebra
 using StaticArrays
 using BenchmarkTools
 using SparseArrays
+using JLD2
 
 import DCD
 
@@ -18,4 +19,8 @@ end
 
 @testset "soc utils" begin
     include("soc_utils_tests.jl")
+end
+
+@testset "solvers" begin
+    include("solver_tests.jl")
 end

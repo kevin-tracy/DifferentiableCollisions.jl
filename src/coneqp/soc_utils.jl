@@ -48,6 +48,20 @@ end
     (1/ρ)*[u0*w0 - ν; (ν/u0 - w0)*u1 + (ρ/u0)*w1]
 end
 
+@inline function inverse_cone_product(λ::SVector{n,T},v::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc::SVector{n_soc, Ti}) where {n,T,n_ort,n_soc,Ti}
+    idx_ort = SVector{n_ort}(1:n_ort)
+    idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
+
+    λ_ort = λ[idx_ort]
+    v_ort = v[idx_ort]
+    λ_soc = λ[idx_soc]
+    v_soc = v[idx_soc]
+
+    top = v_ort ./ λ_ort
+    bot = inverse_soc_cone_product(λ_soc,v_soc)
+    [top;bot]
+end
+
 @inline function inverse_cone_product(λ::SVector{n,T},v::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc1::SVector{n_soc1, Ti},idx_soc2::SVector{n_soc2, Ti}) where {n,T,n_ort,n_soc1,n_soc2,Ti}
     idx_ort = SVector{n_ort}(1:n_ort)
     idx_soc1 = SVector{n_soc1}((n_ort + 1):(n_ort + n_soc1))

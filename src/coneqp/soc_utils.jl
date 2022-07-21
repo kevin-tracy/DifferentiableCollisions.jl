@@ -21,6 +21,20 @@ end
     [s_ort .* z_ort; soc_cone_product(s_soc,z_soc)]
 end
 
+@inline function cone_product(s::SVector{n,T},z::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc1::SVector{n_soc1, Ti},idx_soc2::SVector{n_soc2, Ti}) where {n,T,n_ort,n_soc1,n_soc2,Ti}
+    idx_ort = SVector{n_ort}(1:n_ort)
+    idx_soc1 = SVector{n_soc1}((n_ort + 1):(n_ort + n_soc1))
+    idx_soc2 = SVector{n_soc2}((n_ort + n_soc1 + 1):(n_ort + n_soc1 + n_soc2))
+
+    s_ort = s[idx_ort]
+    z_ort = z[idx_ort]
+    s_soc1 = s[idx_soc1]
+    z_soc1 = z[idx_soc1]
+    s_soc2 = s[idx_soc2]
+    z_soc2 = z[idx_soc2]
+
+    [s_ort .* z_ort; soc_cone_product(s_soc1,z_soc1);soc_cone_product(s_soc2,z_soc2)]
+end
 @inline function inverse_soc_cone_product(u::SVector{n,T},w::SVector{n,T}) where {n,T}
     u0 = u[1]
     u1 = u[SVector{n-1}(2:n)]
@@ -34,18 +48,22 @@ end
     (1/ρ)*[u0*w0 - ν; (ν/u0 - w0)*u1 + (ρ/u0)*w1]
 end
 
-@inline function inverse_cone_product(λ::SVector{n,T},v::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc::SVector{n_soc, Ti}) where {n,T,n_ort,n_soc,Ti}
+@inline function inverse_cone_product(λ::SVector{n,T},v::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc1::SVector{n_soc1, Ti},idx_soc2::SVector{n_soc2, Ti}) where {n,T,n_ort,n_soc1,n_soc2,Ti}
     idx_ort = SVector{n_ort}(1:n_ort)
-    idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
+    idx_soc1 = SVector{n_soc1}((n_ort + 1):(n_ort + n_soc1))
+    idx_soc2 = SVector{n_soc2}((n_ort + n_soc1 + 1):(n_ort + n_soc1 + n_soc2))
 
     λ_ort = λ[idx_ort]
     v_ort = v[idx_ort]
-    λ_soc = λ[idx_soc]
-    v_soc = v[idx_soc]
+    λ_soc1 = λ[idx_soc1]
+    v_soc1 = v[idx_soc1]
+    λ_soc2 = λ[idx_soc2]
+    v_soc2 = v[idx_soc2]
 
     top = v_ort ./ λ_ort
-    bot = inverse_soc_cone_product(λ_soc,v_soc)
-    [top;bot]
+    bot1 = inverse_soc_cone_product(λ_soc1,v_soc1)
+    bot2 = inverse_soc_cone_product(λ_soc2,v_soc2)
+    [top;bot1;bot2]
 end
 
 @inline function gen_e(idx_ort::SVector{n_ort,T}, idx_soc::SVector{n_soc,T}) where {n_ort, n_soc, T}
@@ -54,6 +72,18 @@ end
     e1 = @SVector ones(n_ort)
     e2 = vcat(1.0, (@SVector zeros(n_soc - 1)))
     [e1;e2]
+end
+@inline function gen_e(idx_ort::SVector{n_ort,T},
+                       idx_soc1::SVector{n_soc1,T},
+                       idx_soc2::SVector{n_soc2,T}) where {n_ort, n_soc1,n_soc2,T}
+    idx_ort = SVector{n_ort}(1:n_ort)
+    idx_soc1 = SVector{n_soc1}((n_ort + 1):(n_ort + n_soc1))
+    idx_soc2 = SVector{n_soc2}((n_ort + n_soc1 + 1):(n_ort + n_soc1 + n_soc2))
+
+    e1 = @SVector ones(n_ort)
+    e2 = vcat(1.0, (@SVector zeros(n_soc1 - 1)))
+    e3 = vcat(1.0, (@SVector zeros(n_soc2 - 1)))
+    [e1;e2;e3]
 end
 
 @inline function normalize_soc(x::SVector{nx,T}) where {nx, T}

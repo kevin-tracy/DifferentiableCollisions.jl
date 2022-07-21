@@ -18,11 +18,11 @@ mutable struct Polytope{n,n3,T}
     end
 end
 
-function build_polytope!(vis,P::Polytope{n,n3,T},poly_name::Symbol;color = mc.RGBA(0.7, 0.7, 0.7, 1.0)) where {n,n3,T}
+function build_primitive!(vis,P::Polytope{n,n3,T},poly_name::Symbol;color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {n,n3,T}
     N = length(P.b)
-    h = Polyhedra.HalfSpace(P.A[1,:],P.b[1])
+    h = Polyhedra.HalfSpace(P.A[1,:],α*P.b[1])
     for i = 2:N
-        h = h ∩ Polyhedra.HalfSpace(P.A[i,:],P.b[i])
+        h = h ∩ Polyhedra.HalfSpace(P.A[i,:],α*P.b[i])
     end
     P = polyhedron(h)
     mc.setobject!(vis[poly_name], Polyhedra.Mesh(polyhedron(h)), mc.MeshPhongMaterial(color = color))
@@ -39,12 +39,12 @@ mutable struct Capsule{T}
     end
 end
 
-function build_capsule!(vis, C::Capsule{T}, cap_name::Symbol;color = mc.RGBA(0.7, 0.7, 0.7, 1.0)) where {T}
-    a = [-C.L/2,0,0]
-    b = [C.L/2,0,0]
-    cyl = mc.Cylinder(mc.Point(a...), mc.Point(b...), C.R)
-    spha = mc.HyperSphere(mc.Point(a...), C.R)
-    sphb = mc.HyperSphere(mc.Point(b...), C.R)
+function build_primitive!(vis, C::Capsule{T}, cap_name::Symbol;color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
+    a = α*[-C.L/2,0,0]
+    b = α*[C.L/2,0,0]
+    cyl = mc.Cylinder(mc.Point(a...), mc.Point(b...), α*C.R)
+    spha = mc.HyperSphere(mc.Point(a...), α*C.R)
+    sphb = mc.HyperSphere(mc.Point(b...), α*C.R)
     mc.setobject!(vis[cap_name][:cyl], cyl, mc.MeshPhongMaterial(color=color))
     mc.setobject!(vis[cap_name][:spha], spha, mc.MeshPhongMaterial(color=color))
     mc.setobject!(vis[cap_name][:sphb], sphb, mc.MeshPhongMaterial(color=color))
@@ -61,10 +61,10 @@ mutable struct Cylinder{T}
     end
 end
 
-function build_cylinder!(vis, C::Cylinder{T}, cyl_name::Symbol;color = mc.RGBA(0.7, 0.7, 0.7, 1.0)) where {T}
-    a = [-C.L/2,0,0]
-    b = [C.L/2,0,0]
-    cyl = mc.Cylinder(mc.Point(a...), mc.Point(b...), C.R)
+function build_primitive!(vis, C::Cylinder{T}, cyl_name::Symbol;color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
+    a = α*[-C.L/2,0,0]
+    b = α*[C.L/2,0,0]
+    cyl = mc.Cylinder(mc.Point(a...), mc.Point(b...), α*C.R)
     mc.setobject!(vis[cyl_name][:cyl], cyl, mc.MeshPhongMaterial(color=color))
     return nothing
 end
@@ -79,9 +79,9 @@ mutable struct Cone{T}
         new{T}(SA[0,0,0.0],SA[1,0,0,0.0],H,β)
     end
 end
-function build_cone!(vis, C::Cone{T},cone_name::Symbol; color = mc.RGBA(0.7, 0.7, 0.7, 1.0)) where {T}
+function build_primitive!(vis, C::Cone{T},cone_name::Symbol; color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
 	W = tan(C.β)*C.H
-	cc = mc.Cone(mc.Point(0,0,C.H/2), mc.Point(0, 0.0, -C.H/2), W)
+	cc = mc.Cone(mc.Point(0,0,α*C.H/2), mc.Point(0, 0.0, -α*C.H/2), α*W)
 	mc.setobject!(vis[cone_name], cc, mc.MeshPhongMaterial(color = color))
 end
 
@@ -93,8 +93,8 @@ mutable struct Sphere{T}
         new{T}(SA[0,0,0.0],SA[1,0,0,0.0],R)
     end
 end
-function build_sphere!(vis, C::Sphere{T},sphere_name::Symbol; color = mc.RGBA(0.7, 0.7, 0.7, 1.0)) where {T}
-	spha = mc.HyperSphere(mc.Point(0,0,0.0), C.R)
+function build_primitive!(vis, C::Sphere{T},sphere_name::Symbol; color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
+	spha = mc.HyperSphere(mc.Point(0,0,0.0), α*C.R)
 	mc.setobject!(vis[sphere_name], spha, mc.MeshPhongMaterial(color=color))
 end
 
@@ -137,9 +137,11 @@ function find_verts(A,b)
     idx = sortperm(angs)
     return verts[idx] # return ordered vertices
 end
-function build_polygon!(vis,P::Polygon{nh,nh2,T}, poly_name::Symbol; color = mc.RGBA(0.7, 0.7, 0.7, 1.0) ) where {nh,nh2,T}
+function build_primitive!(vis,P::Polygon{nh,nh2,T}, poly_name::Symbol; color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1 ) where {nh,nh2,T}
 
 	A, b, R = P.A, P.b, P.R
+	b = α*b
+	R = α*R
 	N = length(b)
 
     # create 2d
@@ -197,33 +199,33 @@ let
     @load "polytopes.jld2"
     polytope = Polytope(SMatrix{8,3}(A2),SVector{8}(0.5*b2))
     polytope.r = SA[-7,0,0.0]
-    build_polytope!(vis,polytope,:polytope)
+    build_primitive!(vis,polytope,:polytope; α = 0.5)
     update_pose!(vis[:polytope],polytope)
 
     capsule = Capsule(.3,1.0)
     capsule.r = SA[-5,0,0.0]
-    build_capsule!(vis,capsule,:capsule)
+    build_primitive!(vis,capsule,:capsule; α = 0.5)
     update_pose!(vis[:capsule],capsule)
 
     cylinder = Cylinder(.3,1.0)
     cylinder.r = SA[-3,0,0.0]
-    build_cylinder!(vis,cylinder,:cylinder)
+    build_primitive!(vis,cylinder,:cylinder; α = 0.5)
     update_pose!(vis[:cylinder],cylinder)
 
 	cone = Cone(2.0,deg2rad(25))
 	cone.r = SA[-1,0,0.0]
 	cone.q = SA[cos(pi/4),0,sin(pi/4),0]
-	build_cone!(vis, cone, :cone)
+	build_primitive!(vis, cone, :cone; α = 0.5)
 	update_pose!(vis[:cone],cone)
 
 	sphere = Sphere(0.7)
 	sphere.r = SA[1,0,0]
-	build_sphere!(vis,sphere,:sphere)
+	build_primitive!(vis,sphere,:sphere; α = 0.5)
 	update_pose!(vis[:sphere], sphere)
 
 	polygon = Polygon(create_n_sided(5,0.8)..., 0.2)
 	polygon.r = SA[3,0,0]
-	build_polygon!(vis,polygon,:polygon)
+	build_primitive!(vis,polygon,:polygon; α = 0.5)
 	update_pose!(vis[:polygon], polygon)
 
 end

@@ -20,31 +20,31 @@
 #
 #     return c, SMatrix{ns,nx}(G), SVector{ns}(h), idx_ort, idx_soc1, idx_soc2
 # end
-
-@inline function ort_linesearch(x::SVector{n,T},dx::SVector{n,T}) where {n,T}
-    # this returns the max α ∈ [0,1] st (x + Δx > 0)
-    α = 1.0
-    for i = 1:length(x)
-        if dx[i]<0
-            α = min(α,-x[i]/dx[i])
-        end
-    end
-    return α
-end
-
-@inline function soc_linesearch(y::SVector{n,T},Δ::SVector{n,T}) where {n,T}
-    v_idx = SVector{n-1}(2:n)
-    yv = y[v_idx]
-    Δv = Δ[v_idx]
-    ν = max(y[1]^2 - dot(yv,yv), 1e-25) + 1e-13
-    ζ = y[1]*Δ[1] - dot(yv,Δv)
-    ρ = [ζ/ν; (Δv/sqrt(ν) - ( ( (ζ/sqrt(ν)) + Δ[1] )/( y[1]/sqrt(ν) + 1 ) )*(yv/ν))]
-    if norm(ρ[v_idx])>ρ[1]
-        return min(1.0, 1/(norm(ρ[v_idx]) - ρ[1]))
-    else
-        return 1.0
-    end
-end
+#
+# @inline function ort_linesearch(x::SVector{n,T},dx::SVector{n,T}) where {n,T}
+#     # this returns the max α ∈ [0,1] st (x + Δx > 0)
+#     α = 1.0
+#     for i = 1:length(x)
+#         if dx[i]<0
+#             α = min(α,-x[i]/dx[i])
+#         end
+#     end
+#     return α
+# end
+#
+# @inline function soc_linesearch(y::SVector{n,T},Δ::SVector{n,T}) where {n,T}
+#     v_idx = SVector{n-1}(2:n)
+#     yv = y[v_idx]
+#     Δv = Δ[v_idx]
+#     ν = max(y[1]^2 - dot(yv,yv), 1e-25) + 1e-13
+#     ζ = y[1]*Δ[1] - dot(yv,Δv)
+#     ρ = [ζ/ν; (Δv/sqrt(ν) - ( ( (ζ/sqrt(ν)) + Δ[1] )/( y[1]/sqrt(ν) + 1 ) )*(yv/ν))]
+#     if norm(ρ[v_idx])>ρ[1]
+#         return min(1.0, 1/(norm(ρ[v_idx]) - ρ[1]))
+#     else
+#         return 1.0
+#     end
+# end
 @inline function linesearch(x::SVector{n,T},Δx::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc1::SVector{n_soc1,Ti},idx_soc2::SVector{n_soc2,Ti}) where {n,T,n_ort,n_soc1, n_soc2,Ti}
     idx_ort = SVector{n_ort}(1:n_ort)
     idx_soc1 = SVector{n_soc1}((n_ort + 1):(n_ort + n_soc1))
@@ -121,7 +121,7 @@ function solve_socp(c::SVector{nx,T},
     x,s,z = initialize(c,G,h,idx_ort,idx_soc1,idx_soc2)
 
     if verbose
-        @printf "iter     objv        gap       |Gx+s-h|      κ      step\n"
+        @printf "iter     objv        μ       |Gx+s-h|      |s∘z|      α\n"
         @printf "---------------------------------------------------------\n"
     end
 
@@ -177,7 +177,7 @@ function solve_socp(c::SVector{nx,T},
         if verbose
             @printf("%3d   %10.3e  %9.2e  %9.2e  %9.2e  % 6.4f\n",
               main_iter, c'*x, dot(s,z)/(n_ort + 1), norm(G*x + s - h),
-              norm(cone_product(W\Δsa, W*Δza,idx_ort,idx_soc1,idx_soc2) + σ*μ*e), α)
+              norm(cone_product(s, z,idx_ort,idx_soc1,idx_soc2) + σ*μ*e), α)
         end
 
 

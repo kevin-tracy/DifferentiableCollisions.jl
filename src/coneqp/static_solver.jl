@@ -37,10 +37,12 @@
 end
 
 @inline function soc_linesearch(y::SVector{n,T},Δ::SVector{n,T}) where {n,T}
+    # TODO: maybe try cvxopt linesearch, or conelp linesearch
     v_idx = SVector{n-1}(2:n)
     yv = y[v_idx]
     Δv = Δ[v_idx]
-    ν = max(y[1]^2 - dot(yv,yv), 1e-25) + 1e-13
+    # ν = max(y[1]^2 - dot(yv,yv), 1e-25) + 1e-13
+    ν = y[1]^2 - dot(yv,yv)
     ζ = y[1]*Δ[1] - dot(yv,Δv)
     ρ = [ζ/ν; (Δv/sqrt(ν) - ( ( (ζ/sqrt(ν)) + Δ[1] )/( y[1]/sqrt(ν) + 1 ) )*(yv/ν))]
     if norm(ρ[v_idx])>ρ[1]
@@ -49,6 +51,7 @@ end
         return 1.0
     end
 end
+
 @inline function linesearch(x::SVector{n,T},Δx::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc::SVector{n_soc,Ti}) where {n,T,n_ort,n_soc,Ti}
     idx_ort = SVector{n_ort}(1:n_ort)
     idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
@@ -182,7 +185,7 @@ end
 
 
 # function tt()
-# 
+#
 #     c,G,h,idx_ort,idx_soc = build_pr()
 #
 #     x,s,z = solve_socp(c,G,h,idx_ort,idx_soc;verbose = true, pdip_tol = 1e-12)

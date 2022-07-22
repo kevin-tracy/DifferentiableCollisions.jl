@@ -1,5 +1,5 @@
-# cd("/Users/kevintracy/.julia/dev/DCD/extras")
-# import Pkg; Pkg.activate(".")
+cd("/Users/kevintracy/.julia/dev/DCD/extras")
+import Pkg; Pkg.activate(".")
 
 include("primitives.jl")
 using LinearAlgebra, StaticArrays, Convex, ECOS
@@ -15,10 +15,10 @@ function dcm_from_q(q::SVector{4,T}) where {T}
 end
 
 # collision between cone and capsule
-vis1 = mc.Visualizer()
-open(vis1)
-vis2 = mc.Visualizer()
-open(vis2)
+# vis1 = mc.Visualizer()
+# open(vis1)
+# vis2 = mc.Visualizer()
+# open(vis2)
 
 cone = Cone(2.0,deg2rad(22))
 cone.r = 0.3*(@SVector randn(3))
@@ -133,3 +133,53 @@ mc.setobject!(vis2[:intersec], spha, mc.MeshPhongMaterial(color=mc.RGBA(1.0,0,0,
 # mc.setobject!(vis2[:cone_c], sphc, mc.MeshPhongMaterial(color=mc.RGBA(0.0,1.0,0,1.0)))
 # sphd = mc.HyperSphere(mc.Point(d...), 0.02)
 # mc.setobject!(vis2[:cone_d], sphd, mc.MeshPhongMaterial(color=mc.RGBA(0.0,1.0,0,1.0)))
+
+
+# function problem_matrices(capsule::Capsule{T}) where {T}
+#     n_Q_b = dcm_from_q(capsule.q)
+#     bx = n_Q_b*SA[1,0,0.0]
+#     G_soc_top = SA[0 0 0.0 -capsule.R 0]
+#     G_soc_bot = hcat(-Diagonal(SA[1,1,1.0]), SA[0,0,0.0], bx )
+#     G_soc = [G_soc_top;G_soc_bot]
+#     h_soc = [0; -(capsule.r)]
+#     G_ort = SA[0 0 0 -capsule.L/2 1; 0 0 0 -capsule.L/2 -1]
+#     h_ort = SA[0,0]
+#     G_ort, h_ort, G_soc, h_soc
+# end
+#
+# function problem_matrices(cone::Cone{T}) where {T}
+#     # TODO: remove last column
+#     E = Diagonal(SA[tan(cone.β),1,1.0])
+#     n_Q_b = dcm_from_q(cone.q)
+#     bx = n_Q_b*SA[1,0,0]
+#     EQt = E*n_Q_b'
+#     h_soc = -EQt*cone.r
+#     G_soc = [(-EQt) (-SA[tan(cone.β)*cone.H/2,0,0])]
+#     G_ort = hcat(bx', -cone.H/2)
+#     h_ort = SA[dot(bx,cone.r)]
+#     G_ort, h_ort, G_soc, h_soc
+# end
+#
+# G_ort1, h_ort1, G_soc1, h_soc1 = problem_matrices(capsule)
+# G_ort2, h_ort2, G_soc2, h_soc2 = problem_matrices(cone)
+#
+# n_ort1 = length(h_ort1)
+# n_ort2 = length(h_ort2)
+# n_soc1 = length(h_soc1)
+# n_soc2 = length(h_soc2)
+# n_ort = n_ort1 + n_ort2
+#
+# G_ort_top = G_ort1
+# G_ort_bot = hcat(G_ort2, (@SVector zeros(n_ort2))) # add a column for γ (capsule)
+#
+# G_soc_top = G_soc1
+# G_soc_bot = hcat(G_soc2, (@SVector zeros(n_soc2)))
+#
+# G_ = [G_ort_top;G_ort_bot;G_soc_top;G_soc_bot]
+# h_ = [h_ort1;h_ort2;h_soc1;h_soc2]
+#
+# using DCD
+# idx_ort = SVector{n_ort}(1:n_ort)
+# idx_soc1 = SVector{n_soc1}((n_ort + 1):(n_ort + n_soc1))
+# idx_soc2 = SVector{n_soc2}((n_ort + n_soc1 + 1):(n_ort + n_soc1 + n_soc2))
+# x̄,s,z = DCD.solve_socp(SA[0,0,0,1.0,0],G_,h_,idx_ort,idx_soc1,idx_soc2; verbose = true)

@@ -1,8 +1,3 @@
-cd("/Users/kevintracy/.julia/dev/DCD/extras")
-import Pkg; Pkg.activate(".")
-
-using StaticArrays, Polyhedra, LinearAlgebra, JLD2
-import MeshCat as mc
 
 function update_pose!(vis,P)
     mc.settransform!(vis, mc.Translation(P.r) ∘ mc.LinearMap(mc.QuatRotation(P.q)))
@@ -187,12 +182,12 @@ function build_primitive!(vis,P::Polygon{nh,nh2,T}, poly_name::Symbol; color = m
 end
 
 
-function create_n_sided(N,d)
-    ns = [ [cos(θ);sin(θ)] for θ = 0:(2*π/N):(2*π*(N-1)/N)]
-    A = vcat(transpose.((ns))...)
-    b = d*ones(N)
-    return SMatrix{N,2}(A), SVector{N}(b)
-end
+# function create_n_sided(N,d)
+#     ns = [ [cos(θ);sin(θ)] for θ = 0:(2*π/N):(2*π*(N-1)/N)]
+#     A = vcat(transpose.((ns))...)
+#     b = d*ones(N)
+#     return SMatrix{N,2}(A), SVector{N}(b)
+# end
 # vis = mc.Visualizer()
 # open(vis)
 # let

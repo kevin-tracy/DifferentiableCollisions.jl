@@ -5,6 +5,7 @@ using LinearAlgebra
 using StaticArrays
 using Printf
 using BenchmarkTools
+import MeshCat as mc
 
 # include("coneqp/nt_scaling_lite.jl")
 # include("coneqp/nt_scaling.jl")
@@ -13,6 +14,8 @@ include("coneqp/nt_scaling_chol_2.jl")
 include("coneqp/soc_utils.jl")
 include("coneqp/static_solver.jl")
 include("coneqp/static_solver2.jl")
+include("primitives.jl")
+include("problem_matrices.jl")
 
 export *, \
 

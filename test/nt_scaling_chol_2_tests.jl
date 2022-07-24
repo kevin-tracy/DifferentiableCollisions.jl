@@ -42,4 +42,33 @@ let
         @test norm(o1 - o2) < 1e-13
     end
 
+    for i = 1:1000
+        # NT * vector
+        G = @SMatrix randn(n_ort + n_soc1 + n_soc2, 4)
+        o1 = W_nt * G
+        o2 = W*G
+
+        @test norm(o1 - o2) < 1e-13
+    end
+
+    # S_nt = DCD.scaling_2(s[idx_ort], DCD.arrow(s[idx_soc1]),DCD.arrow(s[idx_soc2]))
+    Z_nt = DCD.scaling_2(z[idx_ort], DCD.arrow(z[idx_soc1]),DCD.arrow(z[idx_soc2]))
+
+
+    # S_p1 = DCD.SA_block_diag(Diagonal(s[idx_ort]), DCD.arrow(s[idx_soc1]))
+    # S = Matrix(DCD.block_diag(S_p1, DCD.arrow(s[idx_soc2])))
+
+    Z_p1 = DCD.SA_block_diag(Diagonal(z[idx_ort]), DCD.arrow(z[idx_soc1]))
+    Z = Matrix(DCD.block_diag(Z_p1, DCD.arrow(z[idx_soc2])))
+
+    # A = S_nt\Z_nt
+    for i = 1:1000
+        # NT * vector
+        G = @SMatrix randn(n_ort + n_soc1 + n_soc2, 4)
+        o1 = (W\Z) * G
+        o2 = (W_nt\Z_nt)*G
+    #
+        @test norm(o1 - o2) < 1e-13
+    end
+
 end

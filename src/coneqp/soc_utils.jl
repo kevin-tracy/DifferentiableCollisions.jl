@@ -1,5 +1,11 @@
 
-@inline function soc_cone_product(u::SVector{n,T},v::SVector{n,T}) where {n,T}
+@inline function arrow(x::SVector{n,T}) where {n,T}
+    top = x'
+    bot = [x[SVector{n-1}(2:n)] x[1]*diagm((@SVector ones(n-1)))]
+    vcat(top,bot)
+end
+
+@inline function soc_cone_product(u::SVector{n,T1},v::SVector{n,T2}) where {n,T1,T2}
     u0 = u[1]
     u1 = u[SVector{n-1}(2:n)]
 
@@ -9,7 +15,7 @@
     [dot(u,v);u0*v1 + v0*u1]
 end
 
-@inline function cone_product(s::SVector{n,T},z::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc::SVector{n_soc, Ti}) where {n,T,n_ort,n_soc,Ti}
+@inline function cone_product(s::SVector{n,T1},z::SVector{n,T2},idx_ort::SVector{n_ort,Ti}, idx_soc::SVector{n_soc, Ti}) where {n,T1,T2,n_ort,n_soc,Ti}
     idx_ort = SVector{n_ort}(1:n_ort)
     idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
 
@@ -21,7 +27,7 @@ end
     [s_ort .* z_ort; soc_cone_product(s_soc,z_soc)]
 end
 
-@inline function cone_product(s::SVector{n,T},z::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc1::SVector{n_soc1, Ti},idx_soc2::SVector{n_soc2, Ti}) where {n,T,n_ort,n_soc1,n_soc2,Ti}
+@inline function cone_product(s::SVector{n,T1},z::SVector{n,T2},idx_ort::SVector{n_ort,Ti}, idx_soc1::SVector{n_soc1, Ti},idx_soc2::SVector{n_soc2, Ti}) where {n,T1,T2,n_ort,n_soc1,n_soc2,Ti}
     idx_ort = SVector{n_ort}(1:n_ort)
     idx_soc1 = SVector{n_soc1}((n_ort + 1):(n_ort + n_soc1))
     idx_soc2 = SVector{n_soc2}((n_ort + n_soc1 + 1):(n_ort + n_soc1 + n_soc2))
@@ -35,7 +41,7 @@ end
 
     [s_ort .* z_ort; soc_cone_product(s_soc1,z_soc1);soc_cone_product(s_soc2,z_soc2)]
 end
-@inline function inverse_soc_cone_product(u::SVector{n,T},w::SVector{n,T}) where {n,T}
+@inline function inverse_soc_cone_product(u::SVector{n,T1},w::SVector{n,T2}) where {n,T1,T2}
     u0 = u[1]
     u1 = u[SVector{n-1}(2:n)]
 
@@ -48,7 +54,7 @@ end
     (1/ρ)*[u0*w0 - ν; (ν/u0 - w0)*u1 + (ρ/u0)*w1]
 end
 
-@inline function inverse_cone_product(λ::SVector{n,T},v::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc::SVector{n_soc, Ti}) where {n,T,n_ort,n_soc,Ti}
+@inline function inverse_cone_product(λ::SVector{n,T1},v::SVector{n,T2},idx_ort::SVector{n_ort,Ti}, idx_soc::SVector{n_soc, Ti}) where {n,T1,T2,n_ort,n_soc,Ti}
     idx_ort = SVector{n_ort}(1:n_ort)
     idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
 
@@ -62,7 +68,7 @@ end
     [top;bot]
 end
 
-@inline function inverse_cone_product(λ::SVector{n,T},v::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc1::SVector{n_soc1, Ti},idx_soc2::SVector{n_soc2, Ti}) where {n,T,n_ort,n_soc1,n_soc2,Ti}
+@inline function inverse_cone_product(λ::SVector{n,T1},v::SVector{n,T2},idx_ort::SVector{n_ort,Ti}, idx_soc1::SVector{n_soc1, Ti},idx_soc2::SVector{n_soc2, Ti}) where {n,T1,T2,n_ort,n_soc1,n_soc2,Ti}
     idx_ort = SVector{n_ort}(1:n_ort)
     idx_soc1 = SVector{n_soc1}((n_ort + 1):(n_ort + n_soc1))
     idx_soc2 = SVector{n_soc2}((n_ort + n_soc1 + 1):(n_ort + n_soc1 + n_soc2))

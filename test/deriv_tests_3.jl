@@ -13,17 +13,14 @@
            idx_soc1::SVector{n_soc1,Ti},
            idx_soc2::SVector{n_soc2,Ti}) where {T,nx,nz,n_ort,n_soc1,n_soc2,Ti,T1,T2,T3,T4,T5,T6,T7}
 
-    G_ort1, h_ort1, G_soc1, h_soc1 = DCD.problem_matrices(capsule,r1,q1)
-    G_ort2, h_ort2, G_soc2, h_soc2 = DCD.problem_matrices(cone,r2,q2)
-    #
-    c,G_,h_,_,_,_ = DCD.combine_problem_matrices(G_ort1, h_ort1, G_soc1, h_soc1,G_ort2, h_ort2, G_soc2, h_soc2)
-    # G_,h_,idx_ort,idx_soc1,idx_soc2 = DCD.problem_matrices(capsule,r1,q1,cone,r2,q2)
+    G,h,idx_ort,idx_soc1,idx_soc2 = DCD.problem_matrices(capsule,r1,q1,cone,r2,q2)
 
-    # c = SA[0,0,0,1.0,0]
+
+    c = SA[0,0,0,1.0,0]
 
     [
-    c + G_'*z;
-    DCD.cone_product(h_ - G_*x, z, idx_ort, idx_soc1, idx_soc2)
+    c + G'*z;
+    DCD.cone_product(h - G*x, z, idx_ort, idx_soc1, idx_soc2)
     ]
 end
 
@@ -37,12 +34,8 @@ function solve_alpha(capsule::DCD.Capsule{T},
            idx_soc1::SVector{n_soc1,Ti},
            idx_soc2::SVector{n_soc2,Ti}) where {T,n_ort,n_soc1,n_soc2,Ti}
 
-    G_ort1, h_ort1, G_soc1, h_soc1 = DCD.problem_matrices(capsule,r1,q1)
-    G_ort2, h_ort2, G_soc2, h_soc2 = DCD.problem_matrices(cone,r2,q2)
-    #
-    c,G_,h_,_,_,_ = DCD.combine_problem_matrices(G_ort1, h_ort1, G_soc1, h_soc1,G_ort2, h_ort2, G_soc2, h_soc2)
-
-    x,s,z = DCD.solve_socp(c,G_,h_,idx_ort,idx_soc1,idx_soc2; verbose = false, pdip_tol = 1e-6)
+    G,h,idx_ort,idx_soc1,idx_soc2 = DCD.problem_matrices(capsule,r1,q1,cone,r2,q2)
+    x,s,z = DCD.solve_socp(SA[0,0,0,1.0,0],G,h,idx_ort,idx_soc1,idx_soc2; verbose = false, pdip_tol = 1e-6)
     [x[4]]
 end
 
@@ -69,10 +62,7 @@ function diff_socp(capsule::DCD.Capsule{T},
 
    dR_dθ=ForwardDiff.jacobian(_θ -> kkt_R(capsule,cone,x,s,z,_θ[idx_r1],_θ[idx_q1],_θ[idx_r2],_θ[idx_q2],idx_ort,idx_soc1,idx_soc2), [capsule.r;capsule.q;cone.r;cone.q])
 
-   G_ort1, h_ort1, G_soc1, h_soc1 = DCD.problem_matrices(capsule,r1,q1)
-   G_ort2, h_ort2, G_soc2, h_soc2 = DCD.problem_matrices(cone,r2,q2)
-
-   _,G,_,_,_,_ = DCD.combine_problem_matrices(G_ort1, h_ort1, G_soc1, h_soc1,G_ort2, h_ort2, G_soc2, h_soc2)
+   G,h,idx_ort,idx_soc1,idx_soc2 = DCD.problem_matrices(capsule,r1,q1,cone,r2,q2)
 
    r1 = -dR_dθ[idx_x,:]
    r2 = -dR_dθ[idx_z,:]
@@ -84,22 +74,18 @@ function diff_socp(capsule::DCD.Capsule{T},
 end
 let
 
-    cone = DCD.Cone(2.0,deg2rad(22))
-    cone.r = 0.3*(@SVector randn(3))
-    cone.q = normalize((@SVector randn(4)))
-
     capsule = DCD.Capsule(.3,1.2)
     capsule.r = (@SVector randn(3))
     capsule.q = normalize((@SVector randn(4)))
 
-    G_ort1, h_ort1, G_soc1, h_soc1 = DCD.problem_matrices(capsule,capsule.r,capsule.q)
-    G_ort2, h_ort2, G_soc2, h_soc2 = DCD.problem_matrices(cone,cone.r,cone.q)
+    cone = DCD.Cone(2.0,deg2rad(22))
+    cone.r = 0.3*(@SVector randn(3))
+    cone.q = normalize((@SVector randn(4)))
 
-    c,G,h,idx_ort,idx_soc1,idx_soc2 = DCD.combine_problem_matrices(G_ort1, h_ort1, G_soc1, h_soc1,G_ort2, h_ort2, G_soc2, h_soc2)
-    # G,h,idx_ort,idx_soc1,idx_soc2 = DCD.problem_matrices(capsule,capsule.r,capsule.q,cone,cone.r,cone.q)
+    G,h,idx_ort,idx_soc1,idx_soc2 = DCD.problem_matrices(capsule,capsule.r,capsule.q,cone,cone.r,cone.q)
 
     # solve socp
-    x,s,z = DCD.solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2; verbose = true, pdip_tol = 1e-6)
+    x,s,z = DCD.solve_socp(SA[0,0,0,1.0,0],G,h,idx_ort,idx_soc1,idx_soc2; verbose = true, pdip_tol = 1e-6)
 
     # indices
     nx = length(x); nz = length(z)

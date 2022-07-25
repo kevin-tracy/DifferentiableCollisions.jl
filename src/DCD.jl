@@ -17,6 +17,7 @@ include("coneqp/static_solver2.jl")
 include("primitives.jl")
 include("visualizer.jl")
 include("problem_matrices.jl")
+include("combine_problem_matrices.jl")
 
 export *, \
 

@@ -15,7 +15,7 @@ import MeshCat as mc
 # open(vis2)
 let
 
-    pdip_tol = 1e-4
+    pdip_tol = 1e-6
 
     c1 = [245, 155, 66]/255
     c2 = [2,190,207]/255
@@ -91,8 +91,8 @@ let
     @show norm(∂z_∂state - ∂z_∂state2)
     @show abs.(J1[1,:] -  ∂z_∂state[1,:])
 
-    @show J1[1,:]
-    @show ∂z_∂state[1,:]
+    # @show J1[1,:]
+    # @show ∂z_∂state[1,:]
 
 
 

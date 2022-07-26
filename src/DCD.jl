@@ -6,9 +6,8 @@ using StaticArrays
 using Printf
 using BenchmarkTools
 import MeshCat as mc
+import ForwardDiff
 
-# include("coneqp/nt_scaling_lite.jl")
-# include("coneqp/nt_scaling.jl")
 include("coneqp/nt_scaling_chol.jl")
 include("coneqp/nt_scaling_chol_2.jl")
 include("coneqp/soc_utils.jl")
@@ -18,6 +17,7 @@ include("primitives.jl")
 include("visualizer.jl")
 include("problem_matrices.jl")
 include("combine_problem_matrices.jl")
+include("proximity.jl")
 
 export *, \
 

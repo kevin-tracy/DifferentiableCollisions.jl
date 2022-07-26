@@ -9,9 +9,12 @@
 end
 
 
-# solve for collision
+# CAPSULE
 @inline function problem_matrices(capsule::Capsule{T},r::SVector{3,T1},q::SVector{4,T2}) where {T,T1,T2}
     n_Q_b = dcm_from_q(q)
+    problem_matrices(capsule,r,n_Q_b)
+end
+@inline function problem_matrices(capsule::Capsule{T},r::SVector{3,T1},n_Q_b::SMatrix{3,3,T2,9}) where {T,T1,T2}
     bx = n_Q_b*SA[1,0,0.0]
     G_soc_top = SA[0 0 0.0 -capsule.R 0]
     G_soc_bot = hcat(-Diagonal(SA[1,1,1.0]), SA[0,0,0.0], bx )
@@ -22,10 +25,13 @@ end
     G_ort, h_ort, G_soc, h_soc
 end
 
+# CONE
 @inline function problem_matrices(cone::Cone{T},r::SVector{3,T1},q::SVector{4,T2}) where {T,T1,T2}
-    # TODO: remove last column
-    E = Diagonal(SA[tan(cone.β),1,1.0])
     n_Q_b = dcm_from_q(q)
+    problem_matrices(cone,r,n_Q_b)
+end
+@inline function problem_matrices(cone::Cone{T},r::SVector{3,T1},n_Q_b::SMatrix{3,3,T2,9}) where {T,T1,T2}
+    E = Diagonal(SA[tan(cone.β),1,1.0])
     bx = n_Q_b*SA[1,0,0]
     EQt = E*n_Q_b'
     h_soc = -EQt*r

@@ -15,6 +15,8 @@ import MeshCat as mc
 # open(vis2)
 let
 
+    pdip_tol = 1e-4
+
     c1 = [245, 155, 66]/255
     c2 = [2,190,207]/255
 
@@ -32,11 +34,12 @@ let
 
     # α, x = DCD.proximity(capsule,cone)
     # @btime DCD.proximity($capsule,$cone)
-    α, x = DCD.proximity(cone,capsule)
+    α, x = DCD.proximity(cone,capsule; pdip_tol)
     # @btime DCD.proximity($capsule,$cone)
     @info α
 
-    α, x, ∂z_∂state = DCD.proximity_jacobian(cone,capsule)
+    α, x, ∂z_∂state = DCD.proximity_jacobian(cone,capsule;pdip_tol)
+    α2, x2, ∂z_∂state2 = DCD.proximity_jacobian_slow(cone,capsule;pdip_tol)
 
     # @btime DCD.proximity_jacobian($capsule,$cone)
 
@@ -64,7 +67,7 @@ let
         cone.q = q1
         capsule.r = r2
         capsule.q = q2
-        α, x = DCD.proximity(cone,capsule; pdip_tol = 1e-10)
+        α, x = DCD.proximity(cone,capsule; pdip_tol = 1e-12)
         [x;α]
     end
 
@@ -75,12 +78,25 @@ let
 
     J1 = FiniteDiff.finite_difference_jacobian(θ -> fd_α(cone,capsule,θ[idx_r1],θ[idx_q1],θ[idx_r2],θ[idx_q2]), [cone.r;cone.q;capsule.r;capsule.q])
 
-    @show J1
-    @show ∂z_∂state
+    # @show J1
+    # @show ∂z_∂state
 
-    @info norm(J1 - ∂z_∂state)
+    @show norm(J1 - ∂z_∂state)
 
-    @info norm(J1[4,:] - ∂z_∂state[4,:])
+    for i = 1:4
+        @show norm(J1[i,:] - ∂z_∂state[i,:])
+    end
+
+    @show norm(J1 - ∂z_∂state2)
+    @show norm(∂z_∂state - ∂z_∂state2)
+    @show abs.(J1[1,:] -  ∂z_∂state[1,:])
+
+    @show J1[1,:]
+    @show ∂z_∂state[1,:]
+
+
+
+
 
 
 end

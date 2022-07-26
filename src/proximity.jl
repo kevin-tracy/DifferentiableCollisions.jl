@@ -1,6 +1,6 @@
 
 
-function proximity(prim1::P1,prim2::P2; pdip_tol::Float64 = 1e-6) where {P1 <: AbstractPrimitive, P2 <: AbstractPrimitive}
+@inline function proximity(prim1::P1,prim2::P2; pdip_tol::Float64 = 1e-6) where {P1 <: AbstractPrimitive, P2 <: AbstractPrimitive}
 
     # quaternion specific (for now TODO: add MRP support)
     G_ort1, h_ort1, G_soc1, h_soc1 = problem_matrices(prim1,prim1.r,prim1.q)
@@ -25,6 +25,7 @@ end
            idx_soc1::SVector{n_soc1,Ti},
            idx_soc2::SVector{n_soc2,Ti}) where {nx,nz,n_ort,n_soc1,n_soc2,Ti,T1,T2,T3,T4,T5,T6,T7,P1 <: AbstractPrimitive, P2 <: AbstractPrimitive}
 
+    # TODO: MRP SUPPORT
     G_ort1, h_ort1, G_soc1, h_soc1 = problem_matrices(capsule,r1,q1)
     G_ort2, h_ort2, G_soc2, h_soc2 = problem_matrices(cone,r2,q2)
     c,G_,h_,_,_,_ = combine_problem_matrices(G_ort1, h_ort1, G_soc1, h_soc1,G_ort2, h_ort2, G_soc2, h_soc2)
@@ -52,6 +53,7 @@ end
 
    dR_dθ=ForwardDiff.jacobian(_θ -> kkt_R(capsule,cone,x,s,z,_θ[idx_r1],_θ[idx_q1],_θ[idx_r2],_θ[idx_q2],idx_ort,idx_soc1,idx_soc2), [capsule.r;capsule.q;cone.r;cone.q])
 
+   # TODO: MRP SUPPORT
    G_ort1, h_ort1, G_soc1, h_soc1 = problem_matrices(capsule,capsule.r,capsule.q)
    G_ort2, h_ort2, G_soc2, h_soc2 = problem_matrices(cone,cone.r,cone.q)
 
@@ -65,7 +67,7 @@ end
    vec(∂x[4,:])
 end
 
-function proximity_gradient(prim1::P1,prim2::P2; pdip_tol::Float64 = 1e-6) where {P1 <: AbstractPrimitive, P2 <: AbstractPrimitive}
+@inline function proximity_gradient(prim1::P1,prim2::P2; pdip_tol::Float64 = 1e-6) where {P1 <: AbstractPrimitive, P2 <: AbstractPrimitive}
 
     # quaternion specific (for now TODO: add MRP support)
     G_ort1, h_ort1, G_soc1, h_soc1 = problem_matrices(prim1,prim1.r,prim1.q)

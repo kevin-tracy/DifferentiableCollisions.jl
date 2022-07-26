@@ -36,9 +36,9 @@ let
     # @btime DCD.proximity($capsule,$cone)
     @info α
 
-    α, x, ∂α_∂state = DCD.proximity_gradient(cone,capsule)
+    α, x, ∂z_∂state = DCD.proximity_jacobian(cone,capsule)
 
-    # @btime DCD.proximity_gradient($capsule,$cone)
+    # @btime DCD.proximity_jacobian($capsule,$cone)
 
     # build big ones
     DCD.build_primitive!(vis2, cone, :cone_int; α = α,color = mc.RGBA(c1..., 0.4))
@@ -57,5 +57,30 @@ let
     mc.setobject!(vis1[:pcone], sph_pcone, mc.MeshPhongMaterial(color=mc.RGBA(1.0,0,0,1.0)))
     sph_pcaps = mc.HyperSphere(mc.Point(pcapsule...), 0.04)
     mc.setobject!(vis1[:pcaps], sph_pcaps, mc.MeshPhongMaterial(color=mc.RGBA(1.0,0,0,1.0)))
+
+    # check derivatives
+    function fd_α(cone,capsule,r1,q1,r2,q2)
+        cone.r = r1
+        cone.q = q1
+        capsule.r = r2
+        capsule.q = q2
+        α, x = DCD.proximity(cone,capsule; pdip_tol = 1e-10)
+        [x;α]
+    end
+
+    idx_r1 = SVector{3}(1:3)
+    idx_q1 = SVector{4}(4:7)
+    idx_r2 = SVector{3}(8:10)
+    idx_q2 = SVector{4}(11:14)
+
+    J1 = FiniteDiff.finite_difference_jacobian(θ -> fd_α(cone,capsule,θ[idx_r1],θ[idx_q1],θ[idx_r2],θ[idx_q2]), [cone.r;cone.q;capsule.r;capsule.q])
+
+    @show J1
+    @show ∂z_∂state
+
+    @info norm(J1 - ∂z_∂state)
+
+    @info norm(J1[4,:] - ∂z_∂state[4,:])
+
 
 end

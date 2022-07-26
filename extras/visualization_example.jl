@@ -35,8 +35,9 @@ let
     # α, x = DCD.proximity(capsule,cone)
     # @btime DCD.proximity($capsule,$cone)
     α, x = DCD.proximity(cone,capsule; pdip_tol)
-    # @btime DCD.proximity($capsule,$cone)
-    @info α
+    @btime DCD.proximity($capsule,$cone)
+    @show α
+    @show x
 
     α, x, ∂z_∂state = DCD.proximity_jacobian(cone,capsule;pdip_tol)
     α2, x2, ∂z_∂state2 = DCD.proximity_jacobian_slow(cone,capsule;pdip_tol)
@@ -80,16 +81,49 @@ let
 
     # @show J1
     # @show ∂z_∂state
+    cone2 = DCD.ConeMRP(2.0,deg2rad(22))
+    cone2.r = cone.r
+    cone2.p = DCD.mrp_from_q(cone.q)
 
-    @show norm(J1 - ∂z_∂state)
 
-    for i = 1:4
-        @show norm(J1[i,:] - ∂z_∂state[i,:])
+    capsule2 = DCD.CapsuleMRP(.3,1.2)
+    capsule2.r = capsule.r
+    capsule2.p = DCD.mrp_from_q(capsule.q)
+
+    α, x = DCD.proximity(cone2,capsule2; pdip_tol)
+    @show α
+    @show x
+    # @btime DCD.proximity($capsule2,$cone2)
+    # @btime DCD.proximity_jacobian($capsule2,$cone2)
+
+    function fd_α2(cone,capsule,r1,p1,r2,p2)
+        cone.r = r1
+        cone.p = p1
+        capsule.r = r2
+        capsule.p = p2
+        α, x = DCD.proximity(cone,capsule; pdip_tol = 1e-12)
+        [x;α]
     end
 
-    @show norm(J1 - ∂z_∂state2)
-    @show norm(∂z_∂state - ∂z_∂state2)
-    @show abs.(J1[1,:] -  ∂z_∂state[1,:])
+    idx_r1 = SVector{3}(1:3)
+    idx_p1 = SVector{3}(4:6)
+    idx_r2 = SVector{3}(7:9)
+    idx_p2 = SVector{3}(10:12)
+
+    J2 = FiniteDiff.finite_difference_jacobian(θ -> fd_α2(cone2,capsule2,θ[idx_r1],θ[idx_p1],θ[idx_r2],θ[idx_p2]), [cone2.r;cone2.p;capsule2.r;capsule2.p])
+
+    _, _, ∂z_∂state_mrp = DCD.proximity_jacobian(cone2,capsule2;pdip_tol)
+
+    @show norm(J1 - ∂z_∂state)
+    @show norm(J2 - ∂z_∂state_mrp)
+    #
+    # for i = 1:4
+    #     @show norm(J1[i,:] - ∂z_∂state[i,:])
+    # end
+    #
+    # @show norm(J1 - ∂z_∂state2)
+    # @show norm(∂z_∂state - ∂z_∂state2)
+    # @show abs.(J1[1,:] -  ∂z_∂state[1,:])
 
     # @show J1[1,:]
     # @show ∂z_∂state[1,:]

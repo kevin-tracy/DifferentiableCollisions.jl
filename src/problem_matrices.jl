@@ -1,3 +1,10 @@
+@inline function mrp_from_q(q::SVector{4,T}) where {T}
+    return q[SA[2,3,4]]/(1+q[1])
+end
+
+@inline function q_from_mrp(p::SVector{3,T}) where {T}
+    return (1/(1+dot(p,p)))*vcat((1-dot(p,p)),2*p)
+end
 
 @inline function dcm_from_q(q::SVector{4,T}) where {T}
     q4,q1,q2,q3 = normalize(q)

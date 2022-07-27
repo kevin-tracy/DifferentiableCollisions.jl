@@ -14,7 +14,7 @@ function build_primitive!(vis,P::Polytope{n,n3,T},poly_name::Symbol;color = mc.R
     return nothing
 end
 
-function build_primitive!(vis, C::Capsule{T}, cap_name::Symbol;color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
+function build_primitive!(vis, C::Union{Capsule{T},CapsuleMRP{T}}, cap_name::Symbol;color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
     a = α*[-C.L/2,0,0]
     b = α*[C.L/2,0,0]
     cyl = mc.Cylinder(mc.Point(a...), mc.Point(b...), α*C.R)
@@ -36,7 +36,7 @@ function build_primitive!(vis, C::Cylinder{T}, cyl_name::Symbol;color = mc.RGBA(
 end
 
 
-function build_primitive!(vis, C::Cone{T},cone_name::Symbol; color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
+function build_primitive!(vis, C::Union{Cone{T},ConeMRP{T}},cone_name::Symbol; color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
 	W = tan(C.β)*C.H
 	cc = mc.Cone(mc.Point(α*C.H/2,0,0), mc.Point(-α*C.H/2, 0.0, 0), α*W)
 	mc.setobject!(vis[cone_name], cc, mc.MeshPhongMaterial(color = color))

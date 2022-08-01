@@ -94,18 +94,16 @@ function contact_kkt(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,κ)
     s = z₊[idx_s]
     λ = z₊[idx_λ]
 
-    # contact points at middle step
+    # jacobian of contact at middle step
     update_pills!(z,P1,P2)
-
     _,_,D_state = DCD.proximity_jacobian(P1,P2)
     D_α = reshape(D_state[4,:],1,14)
-
     E = h*(D_α*Gbar(z))'*[λ]
 
-    # update pills with final step for the constraint term in the 3rd block
+    # conatct stuff at + time step
     update_pills!(z₊,P1,P2)
+    α₊, _ = DCD.proximity(P1,P2)
 
-    α₊, _ = DCD.proximity(P1,P2; pdip_tol = 1e-8)
     [
     single_DEL(z₋[idx_z1],z[idx_z1],z₊[idx_z1],J1,m1,h) + E[1:6];#+ h*get_ft(z[idx_z1],p1,n1,λ);
     single_DEL(z₋[idx_z2],z[idx_z2],z₊[idx_z2],J2,m2,h) + E[7:12];#h*get_ft(z[idx_z2],p2,n2,λ);
@@ -119,18 +117,16 @@ function contact_kkt_jacobian(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,κ)
 
     # contact points at middle step to get contact jacobian
     update_pills!(z,P1,P2)
-
     _,_,D_state = DCD.proximity_jacobian(P1,P2)
     D_α = reshape(D_state[4,:],1,14)
-
     E = h*(D_α*Gbar(z))'*[λ]
 
     # update pills with final step for the constraint term in the 3rd block
     update_pills!(z₊,P1,P2)
-
     α₊, _, D_state₊ = DCD.proximity_jacobian(P1,P2)
     D_α₊ = reshape(D_state₊[4,:],1,14)
 
+    # three part jacobian
     J1 = FD.jacobian(_z -> ([
     single_DEL(z₋[idx_z1],z[idx_z1],_z[idx_z1],J1,m1,h);
     single_DEL(z₋[idx_z2],z[idx_z2],_z[idx_z2],J2,m2,h)

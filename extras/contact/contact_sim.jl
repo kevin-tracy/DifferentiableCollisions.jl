@@ -92,28 +92,30 @@ function contact_kkt(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,κ)
     # contact points at middle step
     update_pills!(z,P1,P2)
     update_pills!(z,dp_P1,dp_P2)
-    p1, p2, n1, n2 = dp.closest_points(dp_P1,dp_P2;pdip_tol = 1e-12)
-    αm, xm = DCD.proximity(P1, P2; pdip_tol = 1e-4)
-    p1 = P1.r + (xm - P1.r)/αm
-    p2 = P2.r + (xm - P2.r)/αm
+    # p1, p2, n1, n2 = dp.closest_points(dp_P1,dp_P2;pdip_tol = 1e-12)
+    # αm, xm = DCD.proximity(P1, P2; pdip_tol = 1e-4)
+    # p1 = P1.r + (xm - P1.r)/αm
+    # p2 = P2.r + (xm - P2.r)/αm
     # n1 = -normalize(p2 - p1)
     # n2 = -normalize(p1 - p2)
     # n1 = normalize(p2 - p1)
     # n2 = normalize(p1 - p2)
     # D = FD2.finite_difference_jacobian(_z -> fd_α(P1,P2,_z), z)
-    # Gbar1 = blockdiag(sparse(I(3)),sparse(G(z[idx_z1[4:7]])))
-    # Gbar2 = blockdiag(sparse(I(3)),sparse(G(z[idx_z2[4:7]])))
-    # Gbar = blockdiag(Gbar1,Gbar2,sparse(I(2)))
+    _,_,D = DCD.proximity_jacobian(P1,P2)
+    D = reshape(D[4,:],1,14)
+    Gbar1 = blockdiag(sparse(I(3)),sparse(G(z[idx_z1[4:7]])))
+    Gbar2 = blockdiag(sparse(I(3)),sparse(G(z[idx_z2[4:7]])))
+    Gbar = blockdiag(Gbar1,Gbar2)
     #
-    # E = h*D*Gbar
+    E = h*(D*Gbar)'*[λ]
 
     # update pills with final step for the constraint term in the 3rd block
     update_pills!(z₊,P1,P2)
     update_pills!(z₊,dp_P1,dp_P2)
-    α₊, x₊ = DCD.proximity(P1,P2; pdip_tol = 1e-4)
+    α₊, x₊ = DCD.proximity(P1,P2; pdip_tol = 1e-6)
     [
-    single_DEL(z₋[idx_z1],z[idx_z1],z₊[idx_z1],J1,m1,h) + h*get_ft(z[idx_z1],p1,n1,λ);
-    single_DEL(z₋[idx_z2],z[idx_z2],z₊[idx_z2],J2,m2,h) + h*get_ft(z[idx_z2],p2,n2,λ);
+    single_DEL(z₋[idx_z1],z[idx_z1],z₊[idx_z1],J1,m1,h) + E[1:6];#+ h*get_ft(z[idx_z1],p1,n1,λ);
+    single_DEL(z₋[idx_z2],z[idx_z2],z₊[idx_z2],J2,m2,h) + E[7:12];#h*get_ft(z[idx_z2],p2,n2,λ);
     s - (α₊ - 1);#s - dp.proximity(dp_P1,dp_P2)#s - (α₊ - 1);
     s*λ - κ
     ]
@@ -136,8 +138,8 @@ end
 function ncp_solve(z₋,z,J1,J2,m1,m2,h,P1,P2,dp_P1, dp_P2)
     # @show z
     z₊ = copy(z) #+ .1*abs.(randn(length(z)))
-    z₊[idx_s]+=10
-    z₊[idx_λ]+=10
+    z₊[idx_s]+=1
+    z₊[idx_λ]+=1
     @printf "iter    |∇ₓL|      |c|        κ          μ          α         αs        αλ\n"
     @printf "--------------------------------------------------------------------------\n"
     for i = 1:20
@@ -147,14 +149,26 @@ function ncp_solve(z₋,z,J1,J2,m1,m2,h,P1,P2,dp_P1, dp_P2)
         μ = dot(z₊[idx_s], z₊[idx_λ])
         # @show rhs1
         # @show norm(e)
-        if norm(rhs1)<1e-5
+        if norm(rhs1)<1e-6
             @info "success"
             return z₊
         end
         Gbar1 = blockdiag(sparse(I(3)),sparse(G(z₊[idx_z1[4:7]])))
         Gbar2 = blockdiag(sparse(I(3)),sparse(G(z₊[idx_z2[4:7]])))
         Gbar = blockdiag(Gbar1,Gbar2,sparse(I(2)))
-        D = FD2.finite_difference_jacobian(_z -> contact_kkt(z₋,z,_z,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,0),z₊)*Gbar
+
+        # finite diff for contact KKT
+        D = FD2.finite_difference_jacobian(_z -> contact_kkt(z₋,z,_z,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,0),z₊)
+
+        # add out analytical jacobian for the contact part
+        update_pills!(z₊,P1,P2)
+        _,_,Dstate = DCD.proximity_jacobian(P1,P2)
+        Dα = reshape(Dstate[4,:],1,14)
+        D[13,1:14] = -Dα
+
+        # use G bar to handle quats
+        D = D*Gbar
+        # D = FD2.finite_difference_jacobian(_z -> contact_kkt(z₋,z,_z,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,0),z₊)*Gbar
         F = factorize(D)
 
         # affine step
@@ -222,7 +236,7 @@ function viss()
 
 
     Random.seed!(1)
-    h = 0.01
+    h = 0.1
     v1 = 4*SA[1,0,0.0]
     v2 = 4*SA[-1,0,0.0]
     ω1 = deg2rad(40)*randn(3)
@@ -232,7 +246,7 @@ function viss()
     # z0 = vcat(P1.r,P1.q)
     # z1 = vcat(P1.r + h*v1, L(P1.q)*Expq(h*ω1))
 
-    N = 300
+    N = 30
     Z= [zeros(16) for i = 1:N]
     Z[1] = [z0;ones(2)]
     Z[2] = [z1;ones(2)]

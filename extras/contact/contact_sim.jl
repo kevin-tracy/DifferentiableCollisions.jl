@@ -11,6 +11,37 @@ import DCD
 using MATLAB
 import DifferentialProximity as dp
 import Random
+
+function mass_properties(cone::Union{DCD.Cone{T},DCD.ConeMRP{T}}; ρ = 1.0) where {T}
+    r = tan(cone.β)*cone.H
+    V = (1/3)*(pi*(r^2)*cone.H)
+    m = V*ρ
+
+    Iyy = m*((3/20)*r^2 + (3/80)*cone.H^2)
+    Izz = Iyy
+    Ixx = 0.3*m*r^2
+    # return m, diagm([Ixx,Iyy,Izz])
+    return m, Diagonal(SA[Ixx,Iyy,Izz])
+end
+
+function mass_properties(capsule::Union{DCD.Capsule{T},DCD.CapsuleMRP{T}}; ρ = 1.0) where {T}
+    R = capsule.R
+    L = capsule.L
+    V_cyl = pi*(capsule.R^2)*capsule.L
+    V_hs = (2*pi*(capsule.R^3)/3)
+    m = (V_cyl + 2*V_hs)*ρ
+    # @info m
+
+    m_cyl = V_cyl * ρ
+    m_hs = V_hs * ρ
+
+    Ixx = m_cyl*R^2/2 + 2*m_hs*(2*R^2/5)
+    Iyy = m_cyl * (L^2/12 + R^2/4) + 2 * m_hs * (2*R^2/5 + L^2/2 + 3*L*R/8)
+    Izz = m_cyl * (L^2/12 + R^2/4) + 2 * m_hs * (2*R^2/5 + L^2/2 + 3*L*R/8)
+
+    # return m, diagm([Ixx,Iyy,Izz])
+    return m, Diagonal(SA[Ixx,Iyy,Izz])
+end
 # using MeshCat, GeometryBasics, CoordinateTransformations, Rotations
 # using Colors
 # using StaticArrays
@@ -210,7 +241,7 @@ function viss()
 
     dp_P1 = dp.create_capsule(:quat)
     dp_P2 = dp.create_capsule(:quat)
-    P1 = DCD.Capsule(1.3,2.0)
+    P1 = DCD.Capsule(0.8,1.3)
     # P2 = DCD.Capsule(1.0,4.0)
     P2 = DCD.Cone(3.0,deg2rad(22))
 
@@ -229,8 +260,13 @@ function viss()
     # P1.q = normalize(@SVector randn(4))
     # P2.q = normalize(@SVector randn(4))
 
-    m1, J1 = gen_inertia(1.3,2.0)
-    m2, J2 = gen_inertia(1.3,2.0)
+    # m1, J1 = gen_inertia(1.3,2.0)
+    # m2, J2 = gen_inertia(1.3,2.0)
+
+    # @show typeof(m1)
+    # @show typeof(J1)
+    m1,J1 = mass_properties(P1)
+    m2,J2 = mass_properties(P2)
 
 
     Random.seed!(1)
@@ -351,6 +387,6 @@ function viss()
 end
 
 
-vis = mc.Visualizer()
-mc.open(vis)
+# vis = mc.Visualizer()
+# mc.open(vis)
 viss()

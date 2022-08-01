@@ -90,12 +90,14 @@ function contact_kkt(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,κ)
     λ = z₊[idx_λ]
 
     # contact points at middle step
-    # update_pills!(z,P1,P2)
+    update_pills!(z,P1,P2)
     update_pills!(z,dp_P1,dp_P2)
     p1, p2, n1, n2 = dp.closest_points(dp_P1,dp_P2;pdip_tol = 1e-12)
-    # αm, xm = DCD.proximity(P1, P2; pdip_tol = 1e-4)
-    # p1 = P1.r + (xm - P1.r)/αm
-    # p2 = P2.r + (xm - P2.r)/αm
+    αm, xm = DCD.proximity(P1, P2; pdip_tol = 1e-4)
+    p1 = P1.r + (xm - P1.r)/αm
+    p2 = P2.r + (xm - P2.r)/αm
+    # n1 = -normalize(p2 - p1)
+    # n2 = -normalize(p1 - p2)
     # n1 = normalize(p2 - p1)
     # n2 = normalize(p1 - p2)
     # D = FD2.finite_difference_jacobian(_z -> fd_α(P1,P2,_z), z)

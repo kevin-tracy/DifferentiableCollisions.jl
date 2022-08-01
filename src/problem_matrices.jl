@@ -61,8 +61,8 @@ end
     bx = n_Q_b*SA[1,0,0]
     EQt = E*n_Q_b'
     h_soc = -EQt*r
-    G_soc = [(-EQt) (-SA[tanβ*H/2,0,0])]
-    G_ort = SA[bx[1] bx[2] bx[3] -H/2]
+    G_soc = [(-EQt) (-SA[tanβ*3*H/4,0,0])]
+    G_ort = SA[bx[1] bx[2] bx[3] -H/4]
     h_ort = SA[dot(bx,r)]
     G_ort, h_ort, G_soc, h_soc
 end

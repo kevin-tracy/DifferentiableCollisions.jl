@@ -38,7 +38,7 @@ end
 
 function build_primitive!(vis, C::Union{Cone{T},ConeMRP{T}},cone_name::Symbol; color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
 	W = tan(C.β)*C.H
-	cc = mc.Cone(mc.Point(α*C.H/2,0,0), mc.Point(-α*C.H/2, 0.0, 0), α*W)
+	cc = mc.Cone(mc.Point(α*C.H/4,0,0), mc.Point(-α*C.H*3/4, 0.0, 0), α*W)
 	mc.setobject!(vis[cone_name], cc, mc.MeshPhongMaterial(color = color))
 end
 

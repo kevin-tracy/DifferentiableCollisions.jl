@@ -96,7 +96,7 @@ function contact_kkt(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,κ)
 
     # jacobian of contact at middle step
     update_pills!(z,P1,P2)
-    _,_,D_state = DCD.proximity_jacobian(P1,P2)
+    _,_,D_state = DCD.proximity_jacobian(P1,P2; pdip_tol = 1e-6)
     D_α = reshape(D_state[4,:],1,14)
     E = h*(D_α*Gbar(z))'*[λ]
 
@@ -117,7 +117,7 @@ function contact_kkt_jacobian(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,κ)
 
     # contact points at middle step to get contact jacobian
     update_pills!(z,P1,P2)
-    _,_,D_state = DCD.proximity_jacobian(P1,P2)
+    _,_,D_state = DCD.proximity_jacobian(P1,P2; pdip_tol = 1e-6)
     D_α = reshape(D_state[4,:],1,14)
     E = h*(D_α*Gbar(z))'*[λ]
 
@@ -211,7 +211,8 @@ function viss()
     dp_P1 = dp.create_capsule(:quat)
     dp_P2 = dp.create_capsule(:quat)
     P1 = DCD.Capsule(1.3,2.0)
-    P2 = DCD.Capsule(1.0,4.0)
+    # P2 = DCD.Capsule(1.0,4.0)
+    P2 = DCD.Cone(3.0,deg2rad(22))
 
     dp_P1.R = 1.3
     dp_P2.R = 1.0
@@ -229,11 +230,11 @@ function viss()
     # P2.q = normalize(@SVector randn(4))
 
     m1, J1 = gen_inertia(1.3,2.0)
-    m2, J2 = gen_inertia(2.0,4)
+    m2, J2 = gen_inertia(1.3,2.0)
 
 
     Random.seed!(1)
-    h = 0.1
+    h = 0.01
     v1 = 4*SA[1,0,0.0]
     v2 = 4*SA[-1,0,0.0]
     ω1 = deg2rad(40)*randn(3)
@@ -243,7 +244,7 @@ function viss()
     # z0 = vcat(P1.r,P1.q)
     # z1 = vcat(P1.r + h*v1, L(P1.q)*Expq(h*ω1))
 
-    N = 30
+    N = 300
     Z= [zeros(16) for i = 1:N]
     Z[1] = [z0;ones(2)]
     Z[2] = [z1;ones(2)]
@@ -274,8 +275,8 @@ function viss()
         p2s[i] = p2
         αs[i] = (α - 1)
 
-        update_pills!(Z[i],dp_P1,dp_P2)
-        dp_p1s[i], dp_p2s[i], n1, n2 = dp.closest_points(dp_P1,dp_P2;pdip_tol = 1e-12)
+        # update_pills!(Z[i],dp_P1,dp_P2)
+        # dp_p1s[i], dp_p2s[i], n1, n2 = dp.closest_points(dp_P1,dp_P2;pdip_tol = 1e-12)
 
     end
 
@@ -292,10 +293,10 @@ function viss()
     mc.setobject!(vis[:p1], sph_p1,mc.MeshPhongMaterial(color = mc.RGBA(1.0,0,0,1.0)))
     mc.setobject!(vis[:p2], sph_p2,mc.MeshPhongMaterial(color = mc.RGBA(1.0,0,0,1.0)))
 
-    dp_sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.1)
-    dp_sph_p2 = mc.HyperSphere(mc.Point(0,0,0.0), 0.1)
-    mc.setobject!(vis[:dp_p1], dp_sph_p1,mc.MeshPhongMaterial(color = mc.RGBA(0.0,1.0,0,1.0)))
-    mc.setobject!(vis[:dp_p2], dp_sph_p2,mc.MeshPhongMaterial(color = mc.RGBA(0.0,1.0,0,1.0)))
+    # dp_sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.1)
+    # dp_sph_p2 = mc.HyperSphere(mc.Point(0,0,0.0), 0.1)
+    # mc.setobject!(vis[:dp_p1], dp_sph_p1,mc.MeshPhongMaterial(color = mc.RGBA(0.0,1.0,0,1.0)))
+    # mc.setobject!(vis[:dp_p2], dp_sph_p2,mc.MeshPhongMaterial(color = mc.RGBA(0.0,1.0,0,1.0)))
 
     # vis = mc.Visualizer()
     # mc.open(vis)
@@ -318,8 +319,8 @@ function viss()
             mc.settransform!(vis[:p1], mc.Translation(p1s[k]))
             mc.settransform!(vis[:p2], mc.Translation(p2s[k]))
 
-            mc.settransform!(vis[:dp_p1], mc.Translation(dp_p1s[k]))
-            mc.settransform!(vis[:dp_p2], mc.Translation(dp_p2s[k]))
+            # mc.settransform!(vis[:dp_p1], mc.Translation(dp_p1s[k]))
+            # mc.settransform!(vis[:dp_p2], mc.Translation(dp_p2s[k]))
         end
     end
     mc.setanimation!(vis, anim)
@@ -350,6 +351,6 @@ function viss()
 end
 
 
-# vis = mc.Visualizer()
-# mc.open(vis)
+vis = mc.Visualizer()
+mc.open(vis)
 viss()

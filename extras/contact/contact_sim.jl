@@ -12,36 +12,36 @@ using MATLAB
 import DifferentialProximity as dp
 import Random
 
-function mass_properties(cone::Union{DCD.Cone{T},DCD.ConeMRP{T}}; ρ = 1.0) where {T}
-    r = tan(cone.β)*cone.H
-    V = (1/3)*(pi*(r^2)*cone.H)
-    m = V*ρ
-
-    Iyy = m*((3/20)*r^2 + (3/80)*cone.H^2)
-    Izz = Iyy
-    Ixx = 0.3*m*r^2
-    # return m, diagm([Ixx,Iyy,Izz])
-    return m, Diagonal(SA[Ixx,Iyy,Izz])
-end
-
-function mass_properties(capsule::Union{DCD.Capsule{T},DCD.CapsuleMRP{T}}; ρ = 1.0) where {T}
-    R = capsule.R
-    L = capsule.L
-    V_cyl = pi*(capsule.R^2)*capsule.L
-    V_hs = (2*pi*(capsule.R^3)/3)
-    m = (V_cyl + 2*V_hs)*ρ
-    # @info m
-
-    m_cyl = V_cyl * ρ
-    m_hs = V_hs * ρ
-
-    Ixx = m_cyl*R^2/2 + 2*m_hs*(2*R^2/5)
-    Iyy = m_cyl * (L^2/12 + R^2/4) + 2 * m_hs * (2*R^2/5 + L^2/2 + 3*L*R/8)
-    Izz = m_cyl * (L^2/12 + R^2/4) + 2 * m_hs * (2*R^2/5 + L^2/2 + 3*L*R/8)
-
-    # return m, diagm([Ixx,Iyy,Izz])
-    return m, Diagonal(SA[Ixx,Iyy,Izz])
-end
+# function mass_properties(cone::Union{DCD.Cone{T},DCD.ConeMRP{T}}; ρ = 1.0) where {T}
+#     r = tan(cone.β)*cone.H
+#     V = (1/3)*(pi*(r^2)*cone.H)
+#     m = V*ρ
+#
+#     Iyy = m*((3/20)*r^2 + (3/80)*cone.H^2)
+#     Izz = Iyy
+#     Ixx = 0.3*m*r^2
+#     # return m, diagm([Ixx,Iyy,Izz])
+#     return m, Diagonal(SA[Ixx,Iyy,Izz])
+# end
+#
+# function mass_properties(capsule::Union{DCD.Capsule{T},DCD.CapsuleMRP{T}}; ρ = 1.0) where {T}
+#     R = capsule.R
+#     L = capsule.L
+#     V_cyl = pi*(capsule.R^2)*capsule.L
+#     V_hs = (2*pi*(capsule.R^3)/3)
+#     m = (V_cyl + 2*V_hs)*ρ
+#     # @info m
+#
+#     m_cyl = V_cyl * ρ
+#     m_hs = V_hs * ρ
+#
+#     Ixx = m_cyl*R^2/2 + 2*m_hs*(2*R^2/5)
+#     Iyy = m_cyl * (L^2/12 + R^2/4) + 2 * m_hs * (2*R^2/5 + L^2/2 + 3*L*R/8)
+#     Izz = m_cyl * (L^2/12 + R^2/4) + 2 * m_hs * (2*R^2/5 + L^2/2 + 3*L*R/8)
+#
+#     # return m, diagm([Ixx,Iyy,Izz])
+#     return m, Diagonal(SA[Ixx,Iyy,Izz])
+# end
 # using MeshCat, GeometryBasics, CoordinateTransformations, Rotations
 # using Colors
 # using StaticArrays
@@ -129,7 +129,7 @@ function contact_kkt(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,κ)
     update_pills!(z,P1,P2)
     _,_,D_state = DCD.proximity_jacobian(P1,P2; pdip_tol = 1e-6)
     D_α = reshape(D_state[4,:],1,14)
-    E = h*(D_α*Gbar(z))'*[λ]
+    E = h*Diagonal(kron(ones(2),[ones(3);0.5*ones(3)])) * (D_α*Gbar(z))'*[λ]
 
     # conatct stuff at + time step
     update_pills!(z₊,P1,P2)
@@ -150,7 +150,8 @@ function contact_kkt_jacobian(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,κ)
     update_pills!(z,P1,P2)
     _,_,D_state = DCD.proximity_jacobian(P1,P2; pdip_tol = 1e-6)
     D_α = reshape(D_state[4,:],1,14)
-    E = h*(D_α*Gbar(z))'*[λ]
+    # E = h*(D_α*Gbar(z))'*[λ]
+    E = h*Diagonal(kron(ones(2),[ones(3);0.5*ones(3)]))  * (D_α*Gbar(z))'*[λ]
 
     # update pills with final step for the constraint term in the 3rd block
     update_pills!(z₊,P1,P2)
@@ -265,8 +266,8 @@ function viss()
 
     # @show typeof(m1)
     # @show typeof(J1)
-    m1,J1 = mass_properties(P1)
-    m2,J2 = mass_properties(P2)
+    m1,J1 = DCD.mass_properties(P1)
+    m2,J2 = DCD.mass_properties(P2)
 
 
     Random.seed!(1)
@@ -274,7 +275,7 @@ function viss()
     v1 = 4*SA[1,0,0.0]
     v2 = 4*SA[-1,0,0.0]
     ω1 = deg2rad(40)*randn(3)
-    ω2 = deg2rad(40)*randn(3)
+    ω2 = deg2rad(5)*randn(3)
     z0 = vcat(P1.r,P1.q,P2.r,P2.q)
     z1 = vcat(P1.r + h*v1,L(P1.q)*Expq(h*ω1),P2.r + v2*h,L(P2.q)*Expq(h*ω2))
     # z0 = vcat(P1.r,P1.q)

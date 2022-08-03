@@ -9,8 +9,8 @@ function build_primitive!(vis,P::Polytope{n,n3,T},poly_name::Symbol;color = mc.R
     for i = 2:N
         h = h ∩ Polyhedra.HalfSpace(P.A[i,:],α*P.b[i])
     end
-    P = polyhedron(h)
-    mc.setobject!(vis[poly_name], Polyhedra.Mesh(polyhedron(h)), mc.MeshPhongMaterial(color = color))
+    pol = Polyhedra.polyhedron(h)
+    mc.setobject!(vis[poly_name], Polyhedra.Mesh(pol), mc.MeshPhongMaterial(color = color))
     return nothing
 end
 
@@ -65,10 +65,10 @@ function find_verts(A,b)
     for i = 2:N
         h = h ∩ Polyhedra.HalfSpace(A[i,:],b[i])
     end
-    P = polyhedron(h)
+    P = Polyhedra.polyhedron(h)
 
     # convert to vertices
-    V = vrep(P)
+    V = Polyhedra.vrep(P)
     verts = V.points.points
 
     # sort based on angle
@@ -118,11 +118,81 @@ function build_primitive!(vis,P::Polygon{nh,nh2,T}, poly_name::Symbol; color = m
         h = h ∩ Polyhedra.HalfSpace([A[i,:];0],b[i])
     end
     h = h ∩ Polyhedra.HalfSpace(SA[0,0,1],R) ∩ Polyhedra.HalfSpace(SA[0,0,-1],R)
-    P = polyhedron(h)
-    mc.setobject!(vis[poly_name][:central], Polyhedra.Mesh(polyhedron(h)), mc.MeshPhongMaterial(color = color))
+    pol = Polyhedra.polyhedron(h)
+    mc.setobject!(vis[poly_name][:central], Polyhedra.Mesh(pol), mc.MeshPhongMaterial(color = color))
     return nothing
 end
 
+function add_axes!(vis,axes_name, scale, R; head_l = 0.1, head_w = 0.05)
+	red_col =mc.RGBA(1.0,0.0,0.0,1.0)
+	green_col =mc.RGBA(0.0,1.0,0.0,1.0)
+	blue_col =mc.RGBA(0.0,0.0,1.0,1.0)
+
+	cylx = mc.Cylinder(mc.Point(0,0,0.0), mc.Point(scale,0,0.0), R)
+	cyly = mc.Cylinder(mc.Point(0,0,0.0), mc.Point(0,scale,0.0), R)
+	cylz = mc.Cylinder(mc.Point(0,0,0.0), mc.Point(0,0.0,scale), R)
+
+    mc.setobject!(vis[axes_name][:x], cylx, mc.MeshPhongMaterial(color=red_col))
+	head = mc.Cone(mc.Point(scale,0,0.0), mc.Point(scale + head_l, 0.0, 0), head_w)
+	mc.setobject!(vis[axes_name][:hx], head, mc.MeshPhongMaterial(color=red_col))
+
+	mc.setobject!(vis[axes_name][:y], cyly, mc.MeshPhongMaterial(color=green_col))
+	head = mc.Cone(mc.Point(0,scale,0.0), mc.Point(0, scale + head_l, 0.0), head_w)
+	mc.setobject!(vis[axes_name][:hy], head, mc.MeshPhongMaterial(color=green_col))
+
+	mc.setobject!(vis[axes_name][:z], cylz, mc.MeshPhongMaterial(color=blue_col))
+	head = mc.Cone(mc.Point(0,0.0,scale), mc.Point(0, 0.0, scale + head_l), head_w)
+	mc.setobject!(vis[axes_name][:hz], head, mc.MeshPhongMaterial(color=blue_col))
+	return nothing
+end
+
+function axes_pair_to_quaternion(n1, n2)
+	if norm(n1 + n2, Inf) < 1e-5
+		n2 = n2 + 1e-5ones(3)
+	end
+
+	reg(x) = 1e-20 * (x == 0) + x
+	# provides the quaternion that rotates n1 into n2, assuming n1 and n2 are normalized
+	n1 ./= reg(norm(n1))
+	n2 ./= reg(norm(n2))
+	n3 = cross(n1,n2)
+	cθ = n1' * n2 # cosine
+	sθ = norm(n3) # sine
+	axis = n3 ./ reg(sθ)
+	tanθhalf = sθ / reg(1 + cθ)
+	q = [1; tanθhalf * axis]
+	q /= norm(q)
+	return DCD.dcm_from_q(SVector{4}(q))
+end
+function set_floor!(vis;
+	    x=20.0,
+	    y=20.0,
+	    z=0.1,
+	    origin=[0,0,0.0],
+		normal=[0,0,1.0],
+	    color=mc.RGBA(0.5,0.5,0.5,1.0),
+	    tilepermeter=0.5,
+	    imagename="/Users/kevintracy/.julia/dev/DifferentialProximity/extras/polyhedra_plotting/tile.png",
+	    axis::Bool=false,
+	    grid::Bool=false)
+    image = mc.PngImage(imagename)
+    repeat = Int.(ceil.(tilepermeter * [x, y]))
+    texture = mc.Texture(image=image, wrap=(1,1), repeat=(repeat[1],repeat[2]))
+    mat = mc.MeshPhongMaterial(map=texture)
+    # (color != nothing) && (mat = MeshPhongMaterial(color=color))
+    obj = mc.HyperRectangle(mc.Vec(-x/2, -y/2, -z), mc.Vec(x, y, z))
+    mc.setobject!(vis[:floor], obj, mat)
+	p = origin
+	q = axes_pair_to_quaternion([0,0,1.], normal)
+    mc.settransform!(vis[:floor], mc.compose(
+		mc.Translation(p...),
+		mc.LinearMap(q),
+		))
+
+    # mc.setvisible!(vis["/Axes"], axis)
+    # mc.setvisible!(vis["/Grid"], grid)
+    return nothing
+end
 
 # function create_n_sided(N,d)
 #     ns = [ [cos(θ);sin(θ)] for θ = 0:(2*π/N):(2*π*(N-1)/N)]

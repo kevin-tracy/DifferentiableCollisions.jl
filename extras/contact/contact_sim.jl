@@ -11,6 +11,7 @@ import DCD
 using MATLAB
 import DifferentialProximity as dp
 import Random
+using Colors
 
 # function mass_properties(cone::Union{DCD.Cone{T},DCD.ConeMRP{T}}; ρ = 1.0) where {T}
 #     r = tan(cone.β)*cone.H
@@ -237,7 +238,6 @@ function ncp_solve(z₋,z,J1,J2,m1,m2,h,P1,P2,dp_P1, dp_P2)
 end
 
 
-# vis = Visualizer()
 function viss()
 
     dp_P1 = dp.create_capsule(:quat)
@@ -256,8 +256,8 @@ function viss()
     # P2.r = SA[10,10,5]
     # P1.q = normalize(@SVector randn(4))
     # P2.q = normalize(@SVector randn(4))
-    P1.r = SA[-4,0,0.0]
-    P2.r = SA[4,0,0.0]
+    P1.r = SA[-4,0,3.0]
+    P2.r = SA[4,0,3.0]
     # P1.q = normalize(@SVector randn(4))
     # P2.q = normalize(@SVector randn(4))
 
@@ -342,6 +342,9 @@ function viss()
     DCD.build_primitive!(vis, P1, :capsule; α = 1.0,color = mc.RGBA(c2..., 0.7))
     DCD.build_primitive!(vis, P2, :cone; α = 1.0,color = mc.RGBA(c1..., 0.7))
 
+    mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
+    DCD.set_floor!(vis; x = 40, y = 40)
+
     anim = mc.Animation(floor(Int,1/h))
 
     for k = 1:length(Z)
@@ -388,6 +391,6 @@ function viss()
 end
 
 
-# vis = mc.Visualizer()
-# mc.open(vis)
+vis = mc.Visualizer()
+mc.open(vis)
 viss()

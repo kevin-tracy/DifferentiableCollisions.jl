@@ -7,6 +7,7 @@ using JLD2
 using Convex
 import ECOS
 import Random
+using Colors
 Random.seed!(1)
 
 function create_n_sided(N,d)
@@ -33,7 +34,7 @@ trans_1 = 1.0
 
 polytope = DCD.Polytope(SMatrix{8,3}(A2),SVector{8}(b2))
 # polytope.q = normalize((@SVector randn(4)))
-polytope.r = SA[-2,0,2.0]
+polytope.r = SA[0,0,2.0]
 
 capsule = DCD.Capsule(0.5,1.2)
 capsule.r = SA[0,0,2.0]
@@ -54,18 +55,18 @@ polygon.r = SA[0.0,0,2.0]
 polygon.q = SA[cos(pi/4),sin(pi/4),0,0]
 
 
-DCD.build_primitive!(vis, polytope, :polytope; α = 1.0,color = mc.RGBA(c1..., trans_1))
+# DCD.build_primitive!(vis, polytope, :polytope; α = 1.0,color = mc.RGBA(c1..., trans_1))
 # DCD.build_primitive!(vis, capsule,  :capsule; α = 1.0,color = mc.RGBA(c2..., trans_1))
 # DCD.build_primitive!(vis, cylinder, :cylinder; α = 1.0,color = mc.RGBA(c2..., trans_1))
-DCD.build_primitive!(vis, cone,     :cone; α = 1.0,color = mc.RGBA(c2..., trans_1))
+# DCD.build_primitive!(vis, cone,     :cone; α = 1.0,color = mc.RGBA(c2..., trans_1))
 # DCD.build_primitive!(vis, sphere,   :sphere; α = 1.0,color = mc.RGBA(c2..., trans_1))
 # DCD.build_primitive!(vis, polygon,  :polygon; α = 1.0,color = mc.RGBA(c2..., trans_1))
 
 
-DCD.update_pose!(vis[:polytope], polytope)
+# DCD.update_pose!(vis[:polytope], polytope)
 # DCD.update_pose!(vis[:capsule],  capsule)
 # DCD.update_pose!(vis[:cylinder], cylinder)
-DCD.update_pose!(vis[:cone],     cone)
+# DCD.update_pose!(vis[:cone],     cone)
 # DCD.update_pose!(vis[:sphere],   sphere)
 # DCD.update_pose!(vis[:polygon],  polygon)
 
@@ -74,6 +75,67 @@ DCD.update_pose!(vis[:cone],     cone)
 
 DCD.set_floor!(vis)
 
+N_αs = 30
+αs = [range(.05,1.0,N_αs);reverse(range(.05,1.0,N_αs))]
+
+object_names = []
+
+for i = 1:length(αs)
+    name = Symbol("polytope"*string(i))
+    push!(object_names, name)
+    DCD.build_primitive!(vis, polytope, name; α = αs[i],color = mc.RGBA(c1..., trans_1))
+    DCD.update_pose!(vis[name],polytope)
+    mc.setvisible!(vis[name], false)
+end
+for i = 1:length(αs)
+    name = Symbol("capsule"*string(i))
+    push!(object_names, name)
+    DCD.build_primitive!(vis, capsule, name; α = αs[i],color = mc.RGBA(c1..., trans_1))
+    DCD.update_pose!(vis[name], capsule)
+    mc.setvisible!(vis[name], false)
+end
+for i = 1:length(αs)
+    name = Symbol("cylinder"*string(i))
+    push!(object_names, name)
+    DCD.build_primitive!(vis, cylinder, name; α = αs[i],color = mc.RGBA(c1..., trans_1))
+    DCD.update_pose!(vis[name], cylinder)
+    mc.setvisible!(vis[name], false)
+end
+for i = 1:length(αs)
+    name = Symbol("cone"*string(i))
+    push!(object_names, name)
+    DCD.build_primitive!(vis, cone, name; α = αs[i],color = mc.RGBA(c1..., trans_1))
+    DCD.update_pose!(vis[name], cone)
+    mc.setvisible!(vis[name], false)
+end
+for i = 1:length(αs)
+    name = Symbol("sphere"*string(i))
+    push!(object_names, name)
+    DCD.build_primitive!(vis, sphere, name; α = αs[i],color = mc.RGBA(c1..., trans_1))
+    DCD.update_pose!(vis[name], sphere)
+    mc.setvisible!(vis[name], false)
+end
+for i = 1:length(αs)
+    name = Symbol("polygon"*string(i))
+    push!(object_names, name)
+    DCD.build_primitive!(vis, polygon, name; α = αs[i],color = mc.RGBA(c1..., trans_1))
+    DCD.update_pose!(vis[name], polygon)
+    mc.setvisible!(vis[name], false)
+end
+
+mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
+DCD.set_floor!(vis)
+anim = mc.Animation(floor(Int,1/0.04))
+
+for k = 1:length(object_names)
+    mc.atframe(anim, k) do
+        for i = 1:length(object_names)
+            mc.setvisible!(vis[object_names[i]], false)
+        end
+        mc.setvisible!(vis[object_names[k]], true)
+    end
+end
+mc.setanimation!(vis, anim)
 
 # αs = 1:.05:2.5
 # rαs = reverse(αs)

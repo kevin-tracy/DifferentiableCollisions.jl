@@ -1,26 +1,26 @@
 
 
-@inline function proximity(prim1::P1,prim2::P2; pdip_tol::Float64 = 1e-6) where {P1 <: AbstractPrimitive, P2 <: AbstractPrimitive}
+@inline function proximity(prim1::P1,prim2::P2; pdip_tol::Float64 = 1e-6, verbose::Bool = false) where {P1 <: AbstractPrimitive, P2 <: AbstractPrimitive}
 
-    # quaternion specific (for now TODO: add MRP support)
+    # quaternion specific
     G_ort1, h_ort1, G_soc1, h_soc1 = problem_matrices(prim1,prim1.r,prim1.q)
     G_ort2, h_ort2, G_soc2, h_soc2 = problem_matrices(prim2,prim2.r,prim2.q)
 
     # create and solve SOCP
     c,G,h,idx_ort,idx_soc1,idx_soc2 = combine_problem_matrices(G_ort1, h_ort1, G_soc1, h_soc1,G_ort2, h_ort2, G_soc2, h_soc2)
-    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2; verbose = false, pdip_tol = pdip_tol)
+    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2; verbose = verbose, pdip_tol = pdip_tol)
 
     return x[4], x[SA[1,2,3]]
 end
-@inline function proximity(prim1::P1,prim2::P2; pdip_tol::Float64 = 1e-6) where {P1 <: AbstractPrimitiveMRP, P2 <: AbstractPrimitiveMRP}
+@inline function proximity(prim1::P1,prim2::P2; pdip_tol::Float64 = 1e-6, verbose::Bool = false) where {P1 <: AbstractPrimitiveMRP, P2 <: AbstractPrimitiveMRP}
 
-    # quaternion specific (for now TODO: add MRP support)
+    # MRP specific
     G_ort1, h_ort1, G_soc1, h_soc1 = problem_matrices(prim1,prim1.r,prim1.p)
     G_ort2, h_ort2, G_soc2, h_soc2 = problem_matrices(prim2,prim2.r,prim2.p)
 
     # create and solve SOCP
     c,G,h,idx_ort,idx_soc1,idx_soc2 = combine_problem_matrices(G_ort1, h_ort1, G_soc1, h_soc1,G_ort2, h_ort2, G_soc2, h_soc2)
-    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2; verbose = false, pdip_tol = pdip_tol)
+    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2; verbose = verbose, pdip_tol = pdip_tol)
 
     return x[4], x[SA[1,2,3]]
 end

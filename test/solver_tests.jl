@@ -22,6 +22,7 @@ let
     c,G,h,idx_ort,idx_soc = build_pr_1()
 
     x,s,z = DCD.solve_socp(c,G,h,idx_ort,idx_soc;verbose = true, pdip_tol = 1e-12)
+    @test abs(dot(s,z))<1e-10
 
     @btime DCD.solve_socp($c,$G,$h,$idx_ort,$idx_soc; verbose = false)
 
@@ -47,7 +48,7 @@ let
     c,G,h,idx_ort,idx_soc1,idx_soc2 = build_pr_2()
 
     x,s,z = DCD.solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2;verbose = true, pdip_tol = 1e-12)
-
+    @test abs(dot(s,z))<1e-10
     @btime DCD.solve_socp($c,$G,$h,$idx_ort,$idx_soc1,$idx_soc2; verbose = false)
 
 end

@@ -23,17 +23,18 @@ end
 @testset "solvers" begin
     include("solver_tests.jl")
 end
-# #
-# # @testset "derivatives" begin
-# #     include("deriv_tests.jl")
-# # end
+# # #
+# # # @testset "derivatives" begin
+# # #     include("deriv_tests.jl")
+# # # end
 @testset "derivatives" begin
-    include("deriv_tests_2.jl")
+    # include("deriv_tests_2.jl")
+    include("proximity_test.jl")
 end
-
+#
 @testset "combine matrices" begin
     include("combine_matrices_test.jl")
 end
-# @testset "derivatives" begin
-#     include("deriv_tests_3.jl")
-# end
+# # @testset "derivatives" begin
+# #     include("deriv_tests_3.jl")
+# # end

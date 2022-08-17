@@ -35,3 +35,7 @@ end
 @testset "combine matrices" begin
     include("combine_matrices_test.jl")
 end
+
+@testset "polytope derivs" begin
+    include("polytope_derivs_test.jl")
+end

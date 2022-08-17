@@ -16,6 +16,31 @@ using JLD2
 
 include("variational_utils.jl")
 
+function Ld(z₋,z₊)
+    # write out all T - V given diff between z1 - z2
+    r₋ = z₋[1:3]
+    q₋ = z₋[4:7]
+
+    r₊ = z₊[1:3]
+    q₊ = z₊[4:7]
+
+    v = (r₊ - r₋)/h
+    ω = (2/h)*H'*L(q₋)'*q₊
+
+    T = 0.5*m*dot(v,v) + 0.5*ω'*J*ω
+
+    V = spring stuff
+
+    return (h/2)*(T - V)
+end
+
+function DEL(z₋, z, z₊)
+
+    # D2(Ld(z₋,z)) + D1(Ld(z,z₊))
+    FD.jacobian(_z -> Ld(z₋, _z), z) + FD.jacobian(_z -> Ld(_z, z₊), z)
+
+end
+
 
 function trans_part(m,x1,x2,x3,Δt)
     (1/Δt)*m*(x2-x1) - (1/Δt)*m*(x3-x2) +  Δt*m*gravity
@@ -50,7 +75,7 @@ function update_pills!(z,P1)
 end
 function fd_α(P1,z)
     update_pills!(z,P1)
-    α, x = DCD.proximity_floor(P1; pdip_tol = 1e-8)
+    α, x = DCD.proximity_floor(P1; pdip_tol = 1e-6,basement = -10.0)
     return [(α - 1)]
 end
 function Gbar(z)
@@ -171,28 +196,30 @@ function viss()
 
     @load "/Users/kevintracy/.julia/dev/DCD/extras/polytopes.jld2"
 
-    A1 = SMatrix{14,3}(A1)
-    b1 = SVector{14}(b1)
+    # A1 = SMatrix{14,3}(A1)
+    # b1 = SVector{14}(b1)
+    # P1 = DCD.Polytope(A1,b1)
+    A2 = SMatrix{8,3}(A2)
+    b2 = SVector{8}(b2)
+    P1 = DCD.Polytope(A2,b2)
 
-    P1 = DCD.Polytope(A1,b1)
-
-    P1.r = SA[-4,0,4.0]
+    P1.r = SA[-20,0,4.0]
 
     m1 = 1.0
-    J1 = Diagonal(SA[1,2,3.0])
+    J1 = Diagonal(SA[1,1,1.0])
 
 
     Random.seed!(1)
-    h = 0.01
+    h = 0.05
     v1 = 4*SA[1,0,0.0]
-    ω1 = deg2rad(40)*randn(3)
+    ω1 = deg2rad(5)*randn(3)
     z0 = vcat(P1.r,P1.q)
     z1 = vcat(P1.r + h*v1,L(P1.q)*Expq(h*ω1))
     # z0 = vcat(P1.r,P1.q)
     # z1 = vcat(P1.r + h*v1, L(P1.q)*Expq(h*ω1))
 
-    N = 300
-    Z= [zeros(9) for i = 1:N]
+    N = 200
+    Z = [zeros(9) for i = 1:N]
     Z[1] = [z0;ones(2)]
     Z[2] = [z1;ones(2)]
     for i = 2:N-1
@@ -200,7 +227,7 @@ function viss()
         # Z[i+1] = newton_solve(Z[i-1],Z[i],J1,J2,m1,m2,h)
         Z[i+1] = ncp_solve(Z[i-1],Z[i],J1,m1,h, P1)
 
-        if abs(norm(Z[i+1][4:7]) - 1) > 1e-13
+        if abs(norm(Z[i+1][4:7]) - 1) > 1e-10
             error("quat 1 is fucked")
         end
     end
@@ -278,6 +305,6 @@ function viss()
 end
 
 #
-vis = mc.Visualizer()
-mc.open(vis)
+# vis = mc.Visualizer()
+# mc.open(vis)
 viss()

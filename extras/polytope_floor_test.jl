@@ -9,10 +9,12 @@ import MeshCat as mc
 
 @load "/Users/kevintracy/.julia/dev/DCD/extras/polytopes.jld2"
 
-A1 = SMatrix{14,3}(A1)
-b1 = SVector{14}(b1)
-
-P1 = DCD.Polytope(A1,b1)
+# A1 = SMatrix{14,3}(A1)
+# b1 = SVector{14}(b1)
+# P1 = DCD.Polytope(A1,b1)
+A2 = SMatrix{8,3}(A2)
+b2 = SVector{8}(b2)
+P1 = DCD.Polytope(A2,b2)
 
 P1.r = 1*(@SVector randn(3)) + SA[0,0,1.0]
 P1.q = normalize((@SVector randn(4)))

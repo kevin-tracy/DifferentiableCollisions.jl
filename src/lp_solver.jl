@@ -94,8 +94,12 @@ function solve_lp(q::SVector{nx,T},
                   verbose = false,
                   pdip_tol = 1e-12) where {nx,T,ns,ns_nx}
 
+    if verbose
+        @printf "iter     objv        μ       |Gx+s-h|        α\n"
+        @printf "----------------------------------------------\n"
+    end
     x,s,z = pdip_init(q,G,h)
-    for i = 1:25
+    for main_iter = 1:25
 
         # evaluate residuals
         r1 = G'z  + q
@@ -118,9 +122,10 @@ function solve_lp(q::SVector{nx,T},
 
         # termination criteria
         if verbose
-            @show (norm(G*x + s - h), dot(s,z)/length(s), α)
+            @printf("%3d   %10.3e  %9.2e  %9.2e  % 6.4f\n",
+              main_iter, q'*x, dot(s,z)/(length(s)), norm(G*x + s - h), α)
         end
-        if max(dot(s,z)/length(s),norm(r3)) < pdip_tol
+        if max(dot(s,z)/ns,norm(r3,Inf)) < pdip_tol
             return x,s,z
         end
     end

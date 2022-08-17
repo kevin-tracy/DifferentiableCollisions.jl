@@ -1,6 +1,12 @@
 
 function build_pr_1()
-    @load "/Users/kevintracy/.julia/dev/DCD/extras/example_socp.jld2"
+    path_str = joinpath(@__DIR__,"example_socps/example_socp.jld2")
+    f = jldopen(path_str)
+    G_ort = f["G_ort"]
+    h_ort = f["h_ort"]
+    G_soc = f["G_soc"]
+    h_soc = f["h_soc"]
+
 
     nx = 5
     n_ort = length(h_ort)
@@ -30,7 +36,14 @@ end
 
 
 function build_pr_2()
-    @load "/Users/kevintracy/.julia/dev/DCD/extras/example_socp_2.jld2"
+    # @load "/Users/kevintracy/.julia/dev/DCD/extras/example_socp_2.jld2"
+    path_str = joinpath(@__DIR__,"example_socps/example_socp_2.jld2")
+    f = jldopen(path_str)
+    G = f["G"]
+    h = f["h"]
+    n_ort = f["n_ort"]
+    n_soc1 = f["n_soc1"]
+    n_soc2 = f["n_soc2"]
 
     nx = 5
     ns = n_ort + n_soc1 + n_soc2

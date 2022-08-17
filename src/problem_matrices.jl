@@ -47,14 +47,6 @@ end
 end
 
 # CONE
-@inline function problem_matrices(cone::Cone{T},r::SVector{3,T1},q::SVector{4,T2}) where {T,T1,T2}
-    n_Q_b = dcm_from_q(q)
-    cone_problem_matrices(cone.H,cone.β,r,n_Q_b)
-end
-@inline function problem_matrices(cone::ConeMRP{T},r::SVector{3,T1},p::SVector{3,T2}) where {T,T1,T2}
-    n_Q_b = dcm_from_mrp(p)
-    cone_problem_matrices(cone.H,cone.β,r,n_Q_b)
-end
 @inline function cone_problem_matrices(H::T,β::T,r::SVector{3,T1},n_Q_b::SMatrix{3,3,T2,9}) where {T,T1,T2}
     tanβ = tan(β)
     E = Diagonal(SA[tanβ,1,1.0])
@@ -66,7 +58,29 @@ end
     h_ort = SA[dot(bx,r)]
     G_ort, h_ort, G_soc, h_soc
 end
+@inline function problem_matrices(cone::Cone{T},r::SVector{3,T1},q::SVector{4,T2}) where {T,T1,T2}
+    n_Q_b = dcm_from_q(q)
+    cone_problem_matrices(cone.H,cone.β,r,n_Q_b)
+end
+@inline function problem_matrices(cone::ConeMRP{T},r::SVector{3,T1},p::SVector{3,T2}) where {T,T1,T2}
+    n_Q_b = dcm_from_mrp(p)
+    cone_problem_matrices(cone.H,cone.β,r,n_Q_b)
+end
 
-# @inline function problem_matrices(prim::P) where {P<:AbstractPrimitive}
-#     problem_matrices(prim,prim.r,prim.q)
-# end
+
+
+# polytope
+@inline function polytope_problem_matrices(A::SMatrix{nh,3,T1,nh3},b::SVector{nh,T2},r::SVector{3,T3},n_Q_b::SMatrix{3,3,T4,9}) where {nh,nh3,T1,T2,T3,T4}
+    AQt = A*n_Q_b'
+    G_ort = [AQt  -b]
+    h_ort = AQt*r
+    G_ort, h_ort, nothing, nothing
+end
+@inline function problem_matrices(polytope::Polytope{n,n3,T},r::SVector{3,T1},q::SVector{4,T2}) where {n,n3,T,T1,T2}
+    n_Q_b = dcm_from_q(q)
+    polytope_problem_matrices(polytope.A,polytope.b,r,n_Q_b)
+end
+@inline function problem_matrices(polytope::Polytope{n,n3,T},r::SVector{3,T1},p::SVector{3,T2}) where {n,n3,T,T1,T2}
+    n_Q_b = dcm_from_mrp(p)
+    polytope_problem_matrices(polytope.A,polytope.b,r,n_Q_b)
+end

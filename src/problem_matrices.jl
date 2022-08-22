@@ -80,7 +80,24 @@ end
     n_Q_b = dcm_from_q(q)
     polytope_problem_matrices(polytope.A,polytope.b,r,n_Q_b)
 end
-@inline function problem_matrices(polytope::Polytope{n,n3,T},r::SVector{3,T1},p::SVector{3,T2}) where {n,n3,T,T1,T2}
+@inline function problem_matrices(polytope::PolytopeMRP{n,n3,T},r::SVector{3,T1},p::SVector{3,T2}) where {n,n3,T,T1,T2}
     n_Q_b = dcm_from_mrp(p)
     polytope_problem_matrices(polytope.A,polytope.b,r,n_Q_b)
+end
+
+# sphere
+@inline function problem_matrices(sphere::Union{Sphere{T},SphereMRP{T}},r::SVector{3,T1},any_attitude::SVector{n,T2}) where {T,T1,T2,n}
+    h_ort = SArray{Tuple{0}, Float64, 1, 0}(())
+    G_ort = SArray{Tuple{0, 4}, Float64, 2, 0}(())
+
+    h_soc = [0;-r]
+
+    G_soc = SA[
+                 0  0  0 -sphere.R
+                -1  0  0  0;
+                 0 -1  0  0;
+                 0  0 -1  0
+                 ]
+
+    return G_ort, h_ort, G_soc, h_soc
 end

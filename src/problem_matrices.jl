@@ -122,3 +122,29 @@ end
     n_Q_b = dcm_from_mrp(p)
     polygon_problem_matrices(polygon.A,polygon.b,polygon.R,r,n_Q_b)
 end
+
+
+# cylinder
+@inline function cylinder_problem_matrices(R::T,L::T,r::SVector{3,T1},n_Q_b::SMatrix{3,3,T2,9}) where {T,T1,T2}
+    bx = n_Q_b*SA[1,0,0.0]
+    G_soc_top = SA[0 0 0.0 -R 0]
+    G_soc_bot = hcat(-Diagonal(SA[1,1,1.0]), SA[0,0,0.0], bx )
+    G_soc = [G_soc_top;G_soc_bot]
+    h_soc = [0; -(r)]
+    G_ort = SA[
+                0 0 0 -L/2 1;
+                0 0 0 -L/2 -1.0;
+                -bx[1] -bx[2] -bx[3] -L/2 0;
+                 bx[1]  bx[2]  bx[3] -L/2 0
+            ]
+    h_ort = SA[0,0.0, -dot(bx,r), dot(bx,r)]
+    G_ort, h_ort, G_soc, h_soc
+end
+@inline function problem_matrices(cylinder::Cylinder{T},r::SVector{3,T1},q::SVector{4,T2}) where {T,T1,T2}
+    n_Q_b = dcm_from_q(q)
+    cylinder_problem_matrices(cylinder.R,cylinder.L,r,n_Q_b)
+end
+@inline function problem_matrices(cylinder::Cylinder{T},r::SVector{3,T1},p::SVector{3,T2}) where {T,T1,T2}
+    n_Q_b = dcm_from_mrp(p)
+    cylinder_problem_matrices(cylinder.R,cylinder.L,r,n_Q_b)
+end

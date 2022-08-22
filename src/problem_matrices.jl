@@ -101,3 +101,24 @@ end
 
     return G_ort, h_ort, G_soc, h_soc
 end
+
+# padded polygon
+@inline function polygon_problem_matrices(A::SMatrix{nh,2,T1,nh3},b::SVector{nh,T2},R::Float64, r::SVector{3,T3},n_Q_b::SMatrix{3,3,T4,9}) where {nh,nh3,T1,T2,T3,T4}
+    Q̃ = n_Q_b[:,SA[1,2]]
+    G_ort = hcat((@SMatrix zeros(nh,3)), -b, A)
+    h_ort = @SVector zeros(nh)
+
+    G_soc_top = SA[0 0 0 -R 0 0]
+    G_soc_bot = hcat(SA[-1 0 0 0;0 -1 0 0;0 0 -1 0], Q̃)
+    G_soc = [G_soc_top;G_soc_bot]
+    h_soc = [0;-r]
+    G_ort, h_ort, G_soc, h_soc
+end
+@inline function problem_matrices(polygon::Polygon{n,n3,T},r::SVector{3,T1},q::SVector{4,T2}) where {n,n3,T,T1,T2}
+    n_Q_b = dcm_from_q(q)
+    polygon_problem_matrices(polygon.A,polygon.b,polygon.R,r,n_Q_b)
+end
+@inline function problem_matrices(polygon::PolygonMRP{n,n3,T},r::SVector{3,T1},p::SVector{3,T2}) where {n,n3,T,T1,T2}
+    n_Q_b = dcm_from_mrp(p)
+    polygon_problem_matrices(polygon.A,polygon.b,polygon.R,r,n_Q_b)
+end

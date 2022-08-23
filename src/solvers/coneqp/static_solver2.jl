@@ -45,19 +45,55 @@
 #         return 1.0
 #     end
 # end
+@inline function ort_linesearch(x::SVector{n,T},dx::SVector{n,T}) where {n,T}
+    # this returns the max α ∈ [0,1] st (x + Δx > 0)
+    α = 1.0
+    for i = 1:length(x)
+        if dx[i]<0
+            α = min(α,-x[i]/dx[i])
+        end
+    end
+    return α
+end
+@inline function soc_linesearch(y::SVector{n,T},Δ::SVector{n,T}) where {n,T}
+    # TODO: maybe try cvxopt linesearch, or conelp linesearch
+    v_idx = SVector{n-1}(2:n)
+    yv = y[v_idx]
+    Δv = Δ[v_idx]
+    # ν = max(y[1]^2 - dot(yv,yv), 1e-25) + 1e-13
+    ν = y[1]^2 - dot(yv,yv)
+    ζ = y[1]*Δ[1] - dot(yv,Δv)
+    ρ = [ζ/ν; (Δv/sqrt(ν) - ( ( (ζ/sqrt(ν)) + Δ[1] )/( y[1]/sqrt(ν) + 1 ) )*(yv/ν))]
+    if norm(ρ[v_idx])>ρ[1]
+        return min(1.0, 1/(norm(ρ[v_idx]) - ρ[1]))
+    else
+        return 1.0
+    end
+end
 @inline function linesearch(x::SVector{n,T},Δx::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc1::SVector{n_soc1,Ti},idx_soc2::SVector{n_soc2,Ti}) where {n,T,n_ort,n_soc1, n_soc2,Ti}
     idx_ort = SVector{n_ort}(1:n_ort)
     idx_soc1 = SVector{n_soc1}((n_ort + 1):(n_ort + n_soc1))
     idx_soc2 = SVector{n_soc2}((n_ort + n_soc1 + 1):(n_ort + n_soc1 + n_soc2))
 
-    x_ort  =  x[idx_ort]
-    Δx_ort = Δx[idx_ort]
+    x_ort   =  x[idx_ort]
+    Δx_ort  = Δx[idx_ort]
     x_soc1  =  x[idx_soc1]
     Δx_soc1 = Δx[idx_soc1]
     x_soc2  =  x[idx_soc2]
     Δx_soc2 = Δx[idx_soc2]
 
-    min(ort_linesearch(x_ort,Δx_ort), soc_linesearch(x_soc1, Δx_soc1),soc_linesearch(x_soc2, Δx_soc2))
+    α = 1.0
+    if n_ort > 0
+        α = min(α, ort_linesearch(x_ort,Δx_ort))
+    end
+    if n_soc1 > 0
+        α = min(α, soc_linesearch(x_soc1, Δx_soc1))
+    end
+    if n_soc2 > 0
+        α = min(α, soc_linesearch(x_soc2, Δx_soc2))
+    end
+    return α
+    # min(ort_linesearch(x_ort,Δx_ort), soc_linesearch(x_soc1, Δx_soc1),soc_linesearch(x_soc2, Δx_soc2))
 end
 @inline function bring2cone(r::SVector{n,T},idx_ort::SVector{n_ort,Ti}, idx_soc1::SVector{n_soc1,Ti},idx_soc2::SVector{n_soc2,Ti}) where {n,n_ort,n_soc1,n_soc2,T,Ti}
     alpha = -1;
@@ -74,13 +110,17 @@ end
     end
 
     # SOC's
-    res = r_soc1[1] - norm(r_soc1[SVector{n_soc1-1}(2:n_soc1)])
-    if  (res <= 0)
-        alpha = max(alpha,-res)
+    if n_soc1 > 0
+        res = r_soc1[1] - norm(r_soc1[SVector{n_soc1-1}(2:n_soc1)])
+        if  (res <= 0)
+            alpha = max(alpha,-res)
+        end
     end
-    res = r_soc2[1] - norm(r_soc2[SVector{n_soc2-1}(2:n_soc2)])
-    if  (res <= 0)
-        alpha = max(alpha,-res)
+    if n_soc2 > 0
+        res = r_soc2[1] - norm(r_soc2[SVector{n_soc2-1}(2:n_soc2)])
+        if  (res <= 0)
+            alpha = max(alpha,-res)
+        end
     end
 
     if alpha < 0
@@ -127,6 +167,14 @@ function solve_socp(c::SVector{nx,T},
 
     e = gen_e(idx_ort, idx_soc1,idx_soc2)
 
+    cone_degree = n_ort
+    if n_soc1 > 0
+        cone_degree += 1
+    end
+    if n_soc2 > 0
+        cone_degree += 1
+    end
+
     for main_iter = 1:20
 
         W = calc_NT_scalings(s,z,idx_ort,idx_soc1,idx_soc2)
@@ -138,7 +186,7 @@ function solve_socp(c::SVector{nx,T},
         # evaluate residuals
         rx = G'*z + c
         rz = s + G*x - h
-        μ = dot(s,z)/(n_ort + 1)
+        μ = dot(s,z)/(cone_degree)
         if μ < pdip_tol
             return x,s,z
         end

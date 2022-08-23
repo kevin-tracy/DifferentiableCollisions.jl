@@ -74,7 +74,11 @@ end
     AQt = A*n_Q_b'
     G_ort = [AQt  -b]
     h_ort = AQt*r
-    G_ort, h_ort, nothing, nothing
+
+    h_soc = SArray{Tuple{0}, Float64, 1, 0}(())
+    G_soc = SArray{Tuple{0, 4}, Float64, 2, 0}(())
+
+    G_ort, h_ort, G_soc, h_soc
 end
 @inline function problem_matrices(polytope::Polytope{n,n3,T},r::SVector{3,T1},q::SVector{4,T2}) where {n,n3,T,T1,T2}
     n_Q_b = dcm_from_q(q)

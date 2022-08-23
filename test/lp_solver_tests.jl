@@ -18,7 +18,14 @@ let
 
     for i = 1:100
         c,G,h= gen_lp(3,6)
-        x,s,z = DCD.solve_lp(c,G,h; pdip_tol = 1e-10, verbose = false)
+
+        nh = length(h)
+        idx_ort = SVector{nh}(1:nh)
+        idx_soc1 = SArray{Tuple{0}, Int64, 1, 0}(())
+        idx_soc2 = SArray{Tuple{0}, Int64, 1, 0}(())
+
+        # x,s,z = DCD.solve_lp(c,G,h; pdip_tol = 1e-10, verbose = false)
+        x,s,z = DCD.solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2; pdip_tol = 1e-10, verbose = false)
 
         r1 = G'z  + c
         r2 = s .* z
@@ -29,7 +36,7 @@ let
         @test norm(r3) < 1e-8
 
         if i == 100
-            @btime DCD.solve_lp($c,$G,$h; pdip_tol = 1e-6, verbose = false)
+            @btime DCD.solve_socp($c,$G,$h,$idx_ort,$idx_soc1,$idx_soc2; pdip_tol = 1e-10, verbose = false)
         end
     end
 

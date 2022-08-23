@@ -1,38 +1,38 @@
 
-function build_pr_1()
-    path_str = joinpath(@__DIR__,"example_socps/example_socp.jld2")
-    f = jldopen(path_str)
-    G_ort = f["G_ort"]
-    h_ort = f["h_ort"]
-    G_soc = f["G_soc"]
-    h_soc = f["h_soc"]
+# function build_pr_1()
+#     path_str = joinpath(@__DIR__,"example_socps/example_socp.jld2")
+#     f = jldopen(path_str)
+#     G_ort = f["G_ort"]
+#     h_ort = f["h_ort"]
+#     G_soc = f["G_soc"]
+#     h_soc = f["h_soc"]
+#
+#
+#     nx = 5
+#     n_ort = length(h_ort)
+#     n_soc = length(h_soc)
+#
+#     G = SMatrix{n_ort + n_soc, nx}([G_ort;G_soc])
+#     h = SVector{n_ort + n_soc}([h_ort;h_soc])
+#
+#     idx_ort = SVector{n_ort}(1:n_ort)
+#     idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
+#
+#     c = SA[0,0,0,1,0.0]
+#
+#     return c, G, h, idx_ort, idx_soc
+# end
 
-
-    nx = 5
-    n_ort = length(h_ort)
-    n_soc = length(h_soc)
-
-    G = SMatrix{n_ort + n_soc, nx}([G_ort;G_soc])
-    h = SVector{n_ort + n_soc}([h_ort;h_soc])
-
-    idx_ort = SVector{n_ort}(1:n_ort)
-    idx_soc = SVector{n_soc}((n_ort + 1):(n_ort + n_soc))
-
-    c = SA[0,0,0,1,0.0]
-
-    return c, G, h, idx_ort, idx_soc
-end
-
-let
-
-    c,G,h,idx_ort,idx_soc = build_pr_1()
-
-    x,s,z = DCD.solve_socp(c,G,h,idx_ort,idx_soc;verbose = true, pdip_tol = 1e-12)
-    @test abs(dot(s,z))<1e-10
-
-    @btime DCD.solve_socp($c,$G,$h,$idx_ort,$idx_soc; verbose = false)
-
-end
+# let
+#
+#     c,G,h,idx_ort,idx_soc = build_pr_1()
+#
+#     x,s,z = DCD.solve_socp(c,G,h,idx_ort,idx_soc;verbose = true, pdip_tol = 1e-12)
+#     @test abs(dot(s,z))<1e-10
+#
+#     @btime DCD.solve_socp($c,$G,$h,$idx_ort,$idx_soc; verbose = false)
+#
+# end
 
 
 function build_pr_2()

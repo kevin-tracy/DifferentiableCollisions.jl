@@ -39,12 +39,12 @@ let
         @test norm(α_star - α_star2) < my_tol*100
         @test norm(x_star - x_star2) < my_tol*100
 
-        α2, x2, J = DCD.proximity_jacobian(P1,P2; verbose = false, pdip_tol = my_tol)
+        α2, x2, J = DCD.proximity_jacobian(P1,P2; pdip_tol = my_tol)
         J2 = FiniteDiff.finite_difference_jacobian(_z -> fd_ver(P1,P2,_z; pdip_tol = my_tol), [P1.r;P1.q;P2.r;P2.q])
         #
         @test norm(α_star - α2) < my_tol*100
         @test norm(x_star - x2) < my_tol*100
-        @test norm(J-J2,Inf) < 1e-2
+        @test norm(J-J2,Inf) < 2e-2
 
         if norm(J - J2) > 1
             @show P1.r

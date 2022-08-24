@@ -2,6 +2,7 @@
   <img width="320" src="https://github.com/kevin-tracy/DCOL.jl/blob/master/extras/images/DCOL_logo.png">
 </p>
 
+
 A library for differential collision detection between the following convex primitives:
 - polytopes 
 - capsules
@@ -50,7 +51,7 @@ These functions output $\alpha$ as the proximity value, with the following signi
 - $\alpha \leq 1$ means there **is** a collision between the two primitives 
 - $\alpha >1$ means there **is not** a collision between the two primitives 
 
-Also, returned is $x$ which is the intersection point between the scaled shapes (see algorithm for significance), and a Jacobian $J$ which is the following:
+Also, returned is `x` which is the intersection point between the scaled shapes (see algorithm for significance), and a Jacobian `J` which is the following:
 
 $$
 \begin{align*}
@@ -67,17 +68,20 @@ J &= \frac{\partial (x,\alpha) }{\partial (r_1,p_1,r_2,p_2)}
 $$
 
 ## Algorithm
-DCOL calculates the collision information between two primitives by solving for the minimum scaling applied to both primitives that result in an intersection. This is done by forming an optimization problem over a scalar $\alpha \in \mathbb{R}$, and a point $x \in \mathbb{R}^3$. The following optimization problem solves for the minimum scaling $\alpha$ such that a point $x$ exists in the scaled versions of two primitives $P_1$ and $P_2$. 
+DCOL calculates the collision information between two primitives by solving for the minimum scaling applied to both primitives that result in an intersection. This is done by forming an optimization problem with the following primal variables:
+
+- $\alpha \in \mathbb{R}$, the scaling applied to each primitive
+- $x \in \mathbb{R}^3$, an intersection point in the world frame
+
+The following optimization problem solves for the minimum scaling α such that a point x exists in the scaled versions of two primitives P1 and P2. 
 
 $$
 \begin{align*}
 \underset{x,\alpha}{\text{minimize}} & \quad \alpha \\
-\text{subject to} & \quad  α \geq 0, \\
+\text{subject to} & \quad  \alpha \geq 0, \\
                   & \quad  x \in P_1(\alpha),\\
                   & \quad  x \in P_2(\alpha)
 \end{align*}
 $$
 
-This problem is a convex optimization problem with conic constraints, and is solved with a custom primal-dual interior-point method inspired by [cvxopt](http://www.seas.ucla.edu/~vandenbe/publications/coneprog.pdf). If the minimum scaling $\alpha^* > 1$, then there is no collision because each primitive had to be scaled up in order to find an intersection. Alternatively, this means that if $\alpha^* \leq 1$, the two primitives are in contact. The solution to this optimization problem can be differentiated with respect to the position and orientation of each primitive using the implicit function theorem. By using a primal-dual interior-point method and returning a solution at a `pdip_tol` of $[10^{-4},10^{-8}]$, the log barrier will effectively smooth out the corners of the primitives to return useful and smooth derivatives.  
-
-
+This problem is a convex optimization problem with conic constraints, and is solved with a custom primal-dual interior-point method inspired by [cvxopt](http://www.seas.ucla.edu/~vandenbe/publications/coneprog.pdf). If the minimum scaling α > 1, then there is no collision because each primitive had to be scaled up in order to find an intersection. Alternatively, this means that if α ≤ 1, the two primitives are in contact. The solution to this optimization problem can be differentiated with respect to the position and orientation of each primitive using the implicit function theorem. By using a primal-dual interior-point method and returning a solution at a `pdip_tol` of `[1e-4,1e-8]`, the log barrier will effectively smooth out the corners of the primitives to return useful and smooth derivatives.  

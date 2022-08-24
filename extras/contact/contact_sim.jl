@@ -7,13 +7,13 @@ import FiniteDiff as FD2
 using Printf
 using SparseArrays
 import MeshCat as mc
-import DCD
+import DCOL as dc
 using MATLAB
 import DifferentialProximity as dp
 import Random
 using Colors
 
-# function mass_properties(cone::Union{DCD.Cone{T},DCD.ConeMRP{T}}; ρ = 1.0) where {T}
+# function mass_properties(cone::Union{dc.Cone{T},dc.ConeMRP{T}}; ρ = 1.0) where {T}
 #     r = tan(cone.β)*cone.H
 #     V = (1/3)*(pi*(r^2)*cone.H)
 #     m = V*ρ
@@ -25,7 +25,7 @@ using Colors
 #     return m, Diagonal(SA[Ixx,Iyy,Izz])
 # end
 #
-# function mass_properties(capsule::Union{DCD.Capsule{T},DCD.CapsuleMRP{T}}; ρ = 1.0) where {T}
+# function mass_properties(capsule::Union{dc.Capsule{T},dc.CapsuleMRP{T}}; ρ = 1.0) where {T}
 #     R = capsule.R
 #     L = capsule.L
 #     V_cyl = pi*(capsule.R^2)*capsule.L
@@ -94,7 +94,7 @@ end
 function get_ft(z,p,n,λ)
     r = z[1:3]
     q = z[4:7]
-    b_Q_n = DCD.dcm_from_q(SVector{4}(q))'
+    b_Q_n = dc.dcm_from_q(SVector{4}(q))'
     f = λ*n
     τ = cross(b_Q_n*(p-r),b_Q_n*f)
     return [f;τ]
@@ -114,7 +114,7 @@ function update_pills!(z,P1,P2)
 end
 function fd_α(P1,P2,z)
     update_pills!(z,P1,P2)
-    α, x = DCD.proximity(P1,P2; pdip_tol = 1e-8)
+    α, x = dc.proximity(P1,P2; pdip_tol = 1e-8)
     return (α - 1)
 end
 function Gbar(z)
@@ -128,13 +128,13 @@ function contact_kkt(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,κ)
 
     # jacobian of contact at middle step
     update_pills!(z,P1,P2)
-    _,_,D_state = DCD.proximity_jacobian(P1,P2; pdip_tol = 1e-6)
+    _,_,D_state = dc.proximity_jacobian(P1,P2; pdip_tol = 1e-6)
     D_α = reshape(D_state[4,:],1,14)
     E = h*Diagonal(kron(ones(2),[ones(3);0.5*ones(3)])) * (D_α*Gbar(z))'*[λ]
 
     # conatct stuff at + time step
     update_pills!(z₊,P1,P2)
-    α₊, _ = DCD.proximity(P1,P2)
+    α₊, _ = dc.proximity(P1,P2)
 
     [
     single_DEL(z₋[idx_z1],z[idx_z1],z₊[idx_z1],J1,m1,h) + E[1:6];#+ h*get_ft(z[idx_z1],p1,n1,λ);
@@ -149,14 +149,14 @@ function contact_kkt_jacobian(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,κ)
 
     # contact points at middle step to get contact jacobian
     update_pills!(z,P1,P2)
-    _,_,D_state = DCD.proximity_jacobian(P1,P2; pdip_tol = 1e-6)
+    _,_,D_state = dc.proximity_jacobian(P1,P2; pdip_tol = 1e-6)
     D_α = reshape(D_state[4,:],1,14)
     # E = h*(D_α*Gbar(z))'*[λ]
     E = h*Diagonal(kron(ones(2),[ones(3);0.5*ones(3)]))  * (D_α*Gbar(z))'*[λ]
 
     # update pills with final step for the constraint term in the 3rd block
     update_pills!(z₊,P1,P2)
-    α₊, _, D_state₊ = DCD.proximity_jacobian(P1,P2)
+    α₊, _, D_state₊ = dc.proximity_jacobian(P1,P2)
     D_α₊ = reshape(D_state₊[4,:],1,14)
 
     # three part jacobian
@@ -242,9 +242,9 @@ function viss()
 
     dp_P1 = dp.create_capsule(:quat)
     dp_P2 = dp.create_capsule(:quat)
-    P1 = DCD.Capsule(0.8,1.3)
-    # P2 = DCD.Capsule(1.0,4.0)
-    P2 = DCD.Cone(3.0,deg2rad(22))
+    P1 = dc.Capsule(0.8,1.3)
+    # P2 = dc.Capsule(1.0,4.0)
+    P2 = dc.Cone(3.0,deg2rad(22))
 
     dp_P1.R = 1.3
     dp_P2.R = 1.0
@@ -266,8 +266,8 @@ function viss()
 
     # @show typeof(m1)
     # @show typeof(J1)
-    m1,J1 = DCD.mass_properties(P1)
-    m2,J2 = DCD.mass_properties(P2)
+    m1,J1 = dc.mass_properties(P1)
+    m2,J2 = dc.mass_properties(P2)
 
 
     Random.seed!(1)
@@ -305,7 +305,7 @@ function viss()
     αs = zeros(N)
     for i = 1:N
         update_pills!(Z[i],P1,P2)
-        α, x = DCD.proximity(P1, P2; pdip_tol = 1e-10)
+        α, x = dc.proximity(P1, P2; pdip_tol = 1e-10)
         p1 = P1.r + (x - P1.r)/α
         p2 = P2.r + (x - P2.r)/α
         p1s[i] = p1
@@ -318,12 +318,12 @@ function viss()
     end
 
 
-    mat"
-    figure
-    hold on
-    plot($αs)
-    hold off
-    "
+    # mat"
+    # figure
+    # hold on
+    # plot($αs)
+    # hold off
+    # "
 
     sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.1)
     sph_p2 = mc.HyperSphere(mc.Point(0,0,0.0), 0.1)
@@ -339,11 +339,11 @@ function viss()
     # mc.open(vis)
     c1 = [245, 155, 66]/255
     c2 = [2,190,207]/255
-    DCD.build_primitive!(vis, P1, :capsule; α = 1.0,color = mc.RGBA(c2..., 0.7))
-    DCD.build_primitive!(vis, P2, :cone; α = 1.0,color = mc.RGBA(c1..., 0.7))
+    dc.build_primitive!(vis, P1, :capsule; α = 1.0,color = mc.RGBA(c2..., 0.7))
+    dc.build_primitive!(vis, P2, :cone; α = 1.0,color = mc.RGBA(c1..., 0.7))
 
     mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
-    DCD.set_floor!(vis; x = 40, y = 40)
+    dc.set_floor!(vis; x = 40, y = 40)
 
     anim = mc.Animation(floor(Int,1/h))
 

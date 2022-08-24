@@ -7,7 +7,7 @@ import FiniteDiff as FD2
 using Printf
 using SparseArrays
 import MeshCat as mc
-import DCD
+import DCOL as dc
 using MATLAB
 import DifferentialProximity as dp
 import Random
@@ -75,7 +75,7 @@ function update_pills!(z,P1)
 end
 function fd_α(P1,z)
     update_pills!(z,P1)
-    α, x = DCD.proximity_floor(P1; pdip_tol = 1e-6,basement = -10.0)
+    α, x = dc.proximity_floor(P1; pdip_tol = 1e-6,basement = -10.0)
     return [(α - 1)]
 end
 function Gbar(z)
@@ -87,7 +87,7 @@ function contact_kkt(z₋,z,z₊,J1,m1,P1,h,κ)
 
     # jacobian of contact at middle step
     # update_pills!(z,P1)
-    # _,_,D_state = DCD.proximity_jacobian(P1,P2; pdip_tol = 1e-6)
+    # _,_,D_state = dc.proximity_jacobian(P1,P2; pdip_tol = 1e-6)
     # D_α = reshape(D_state[4,:],1,14)
     D_α = FD2.finite_difference_jacobian(_z -> fd_α(P1,_z), z)
     D_α = D_α[:,1:7]
@@ -96,7 +96,7 @@ function contact_kkt(z₋,z,z₊,J1,m1,P1,h,κ)
 
     # conatct stuff at + time step
     update_pills!(z₊,P1)
-    α₊, _ = DCD.proximity_floor(P1)
+    α₊, _ = dc.proximity_floor(P1)
 
     [
     single_DEL(z₋[idx_z1],z[idx_z1],z₊[idx_z1],J1,m1,h) + E[1:6];#+ h*get_ft(z[idx_z1],p1,n1,λ);
@@ -194,14 +194,14 @@ end
 
 function viss()
 
-    @load "/Users/kevintracy/.julia/dev/DCD/extras/polytopes.jld2"
+    @load "/Users/kevintracy/.julia/dev/dc/extras/polytopes.jld2"
 
     # A1 = SMatrix{14,3}(A1)
     # b1 = SVector{14}(b1)
-    # P1 = DCD.Polytope(A1,b1)
+    # P1 = dc.Polytope(A1,b1)
     A2 = SMatrix{8,3}(A2)
     b2 = SVector{8}(b2)
-    P1 = DCD.Polytope(A2,b2)
+    P1 = dc.Polytope(A2,b2)
 
     P1.r = SA[-20,0,4.0]
 
@@ -239,7 +239,7 @@ function viss()
     # αs = zeros(N)
     # for i = 1:N
     #     update_pills!(Z[i],P1,P2)
-    #     α, x = DCD.proximity(P1, P2; pdip_tol = 1e-10)
+    #     α, x = dc.proximity(P1, P2; pdip_tol = 1e-10)
     #     p1 = P1.r + (x - P1.r)/α
     #     p2 = P2.r + (x - P2.r)/α
     #     p1s[i] = p1
@@ -273,15 +273,15 @@ function viss()
     # # mc.open(vis)
     # c1 = [245, 155, 66]/255
     # c2 = [2,190,207]/255
-    # DCD.build_primitive!(vis, P1, :capsule; α = 1.0,color = mc.RGBA(c2..., 0.7))
-    # DCD.build_primitive!(vis, P2, :cone; α = 1.0,color = mc.RGBA(c1..., 0.7))
+    # dc.build_primitive!(vis, P1, :capsule; α = 1.0,color = mc.RGBA(c2..., 0.7))
+    # dc.build_primitive!(vis, P2, :cone; α = 1.0,color = mc.RGBA(c1..., 0.7))
     #
     # mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
-    # DCD.set_floor!(vis; x = 40, y = 40)
+    # dc.set_floor!(vis; x = 40, y = 40)
     #
     c1 = [245, 155, 66]/255
-    DCD.build_primitive!(vis, P1, :polytope1; α = 1.0,color = mc.RGBA(c1..., 1.0))
-    DCD.update_pose!(vis[:polytope1], P1)
+    dc.build_primitive!(vis, P1, :polytope1; α = 1.0,color = mc.RGBA(c1..., 1.0))
+    dc.update_pose!(vis[:polytope1], P1)
     anim = mc.Animation(floor(Int,1/h))
     #
     for k = 1:length(Z)
@@ -305,6 +305,6 @@ function viss()
 end
 
 #
-# vis = mc.Visualizer()
-# mc.open(vis)
+vis = mc.Visualizer()
+mc.open(vis)
 viss()

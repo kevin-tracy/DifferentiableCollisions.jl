@@ -165,7 +165,7 @@ function axes_pair_to_quaternion(n1, n2)
 	tanθhalf = sθ / reg(1 + cθ)
 	q = [1; tanθhalf * axis]
 	q /= norm(q)
-	return DCD.dcm_from_q(SVector{4}(q))
+	return dcm_from_q(SVector{4}(q))
 end
 function set_floor!(vis;
 	    x=20.0,

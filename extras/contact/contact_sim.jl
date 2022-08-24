@@ -85,6 +85,9 @@ const idx_Δz1 = 1:6
 const idx_Δz2 = 7:12
 const idx_s = 15
 const idx_λ = 16
+const idx_s_pin1 = 17:21
+const idx_λ_pin1 = 22:26
+
 function DEL(z₋,z,z₊,J1,J2,m1,m2,h)
     [
     single_DEL(z₋[idx_z1],z[idx_z1],z₊[idx_z1],J1,m1,h);
@@ -188,6 +191,17 @@ function update_z(z,Δz)
     znew[idx_λ]       += Δz[idx_λ - 2]
     return znew
 end
+function pin_con(z)
+    r1,q1,r2,q2 = get_states(z)
+    Q1 = dc.dcm_from_q(q1)
+    [
+    r1 + Q1*SA[6/2,0,0] - SA[0,0,3.0];
+    q1[SA[2,3]]
+    ]
+end
+function D_pin_con(z)
+    ForwardDiff.jacobian(D_pin_con,z)
+end
 function ncp_solve(z₋,z,J1,J2,m1,m2,h,P1,P2,dp_P1, dp_P2)
     z₊ = copy(z) #+ .1*abs.(randn(length(z)))
     z₊[idx_s]+=1
@@ -202,8 +216,8 @@ function ncp_solve(z₋,z,J1,J2,m1,m2,h,P1,P2,dp_P1, dp_P2)
         end
 
         # finite diff for contact KKT
-        # D = FD2.finite_difference_jacobian(_z -> contact_kkt(z₋,z,_z,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,0),z₊)
-        D = contact_kkt_jacobian(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,0)
+        D = FD2.finite_difference_jacobian(_z -> contact_kkt(z₋,z,_z,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,0),z₊)
+        # D = contact_kkt_jacobian(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,0)
 
         # use G bar to handle quats and factorize
         F = factorize(D*blockdiag(Gbar(z₊),sparse(I(2))))
@@ -242,9 +256,10 @@ function viss()
 
     dp_P1 = dp.create_capsule(:quat)
     dp_P2 = dp.create_capsule(:quat)
-    P1 = dc.Capsule(0.8,1.3)
+    P1 = dc.Capsule(0.2,6.0)
+    # P1 = dc.Sphere(1.0)
     # P2 = dc.Capsule(1.0,4.0)
-    P2 = dc.Cone(3.0,deg2rad(22))
+    P2 = dc.Sphere(1.5)
 
     dp_P1.R = 1.3
     dp_P2.R = 1.0
@@ -256,8 +271,8 @@ function viss()
     # P2.r = SA[10,10,5]
     # P1.q = normalize(@SVector randn(4))
     # P2.q = normalize(@SVector randn(4))
-    P1.r = SA[-4,0,3.0]
-    P2.r = SA[4,0,3.0]
+    P1.r = SA[3,0,3.0]
+    P2.r = SA[8,0,8.0]
     # P1.q = normalize(@SVector randn(4))
     # P2.q = normalize(@SVector randn(4))
 
@@ -267,14 +282,16 @@ function viss()
     # @show typeof(m1)
     # @show typeof(J1)
     m1,J1 = dc.mass_properties(P1)
-    m2,J2 = dc.mass_properties(P2)
+    # m2,J2 = dc.mass_properties(P2)
+    m2 = 1*4*(pi*1.5^3)/3
+    J2 = (2/5)*m2*1.5^2*Diagonal(SA[1,1,1])
 
 
     Random.seed!(1)
     h = 0.01
-    v1 = 4*SA[1,0,0.0]
-    v2 = 4*SA[-1,0,0.0]
-    ω1 = deg2rad(40)*randn(3)
+    v1 = 0*SA[1,0,0.0]
+    v2 = 4*SA[-1,.1,-1]
+    ω1 = deg2rad(0)*randn(3)
     ω2 = deg2rad(5)*randn(3)
     z0 = vcat(P1.r,P1.q,P2.r,P2.q)
     z1 = vcat(P1.r + h*v1,L(P1.q)*Expq(h*ω1),P2.r + v2*h,L(P2.q)*Expq(h*ω2))
@@ -335,6 +352,11 @@ function viss()
     # mc.setobject!(vis[:dp_p1], dp_sph_p1,mc.MeshPhongMaterial(color = mc.RGBA(0.0,1.0,0,1.0)))
     # mc.setobject!(vis[:dp_p2], dp_sph_p2,mc.MeshPhongMaterial(color = mc.RGBA(0.0,1.0,0,1.0)))
 
+    joint_con_p = mc.HyperSphere(mc.Point(0,0,0.0), 0.2)
+    mc.setobject!(vis[:p_ideal], joint_con_p,mc.MeshPhongMaterial(color = mc.RGBA(0.0,1.0,0,1.0)))
+    mc.setobject!(vis[:p_actual], joint_con_p,mc.MeshPhongMaterial(color = mc.RGBA(1.0,0,0,1.0)))
+
+    mc.settransform!(vis[:p_ideal], mc.Translation([0,0,3.0]))
     # vis = mc.Visualizer()
     # mc.open(vis)
     c1 = [245, 155, 66]/255
@@ -358,6 +380,10 @@ function viss()
 
             mc.settransform!(vis[:p1], mc.Translation(p1s[k]))
             mc.settransform!(vis[:p2], mc.Translation(p2s[k]))
+
+            Q1 = dc.dcm_from_q(SVector{4}(q1))
+
+            mc.settransform!(vis[:p_actual], mc.Translation(r1 + Q1*[-6/2,0,0]))
 
             # mc.settransform!(vis[:dp_p1], mc.Translation(dp_p1s[k]))
             # mc.settransform!(vis[:dp_p2], mc.Translation(dp_p2s[k]))

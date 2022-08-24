@@ -1,5 +1,5 @@
 __precompile__(true)
-module DCD
+module DCOL
 
 using LinearAlgebra
 using StaticArrays

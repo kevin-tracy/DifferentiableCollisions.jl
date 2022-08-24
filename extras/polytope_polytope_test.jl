@@ -22,13 +22,19 @@ P1.q = normalize((@SVector randn(4)))
 P2.r = 1*(@SVector randn(3))
 P2.q = normalize((@SVector randn(4)))
 
-# test if solver can solve LP's
-G_ort1, h_ort1, G_soc1, h_soc1 = DCD.problem_matrices(P1,P1.r,P1.q)
-G_ort2, h_ort2, G_soc2, h_soc2 = DCD.problem_matrices(P2,P2.r,P2.q)
-c,G,h,idx_ort,idx_soc1,idx_soc2 = DCD.combine_problem_matrices(G_ort1, h_ort1, G_soc1, h_soc1,G_ort2, h_ort2, G_soc2, h_soc2)
-x,s,z = DCD.solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2; verbose = true, pdip_tol = 1e-8)
+DCD.proximity(P1,P2)
+using BenchmarkTools
+@btime DCD.proximity($P1,$P2; pdip_tol = 1e-6)
 
-@btime DCD.solve_socp($c,$G,$h,$idx_ort,$idx_soc1,$idx_soc2; verbose = false, pdip_tol = 1e-6)
+DCD.proximity_jacobian(P1,P2)
+@btime DCD.proximity_jacobian($P1,$P2; pdip_tol = 1e-6)
+# test if solver can solve LP's
+# G_ort1, h_ort1, G_soc1, h_soc1 = DCD.problem_matrices(P1,P1.r,P1.q)
+# G_ort2, h_ort2, G_soc2, h_soc2 = DCD.problem_matrices(P2,P2.r,P2.q)
+# c,G,h,idx_ort,idx_soc1,idx_soc2 = DCD.combine_problem_matrices(G_ort1, h_ort1, G_soc1, h_soc1,G_ort2, h_ort2, G_soc2, h_soc2)
+# x,s,z = DCD.solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2; verbose = true, pdip_tol = 1e-8)
+#
+# @btime DCD.solve_socp($c,$G,$h,$idx_ort,$idx_soc1,$idx_soc2; verbose = false, pdip_tol = 1e-6)
 #
 # x = Variable(3)
 # α = Variable()

@@ -165,7 +165,7 @@ end
    dw_dθ = -dR_dw\dR_dθ
    dw_dθ[SA[1,2,3,4],:]
 end
-@inline function proximity_jacobian(prim1::P1,prim2::P2; pdip_tol::Float64 = 1e-6) where {P1 <: AbstractPrimitive, P2 <: AbstractPrimitive}
+@inline function proximity_jacobian(prim1::P1,prim2::P2; pdip_tol::Float64 = 1e-6, verbose = false) where {P1 <: AbstractPrimitive, P2 <: AbstractPrimitive}
 
     # quaternion specific (for now TODO: add MRP support)
     G_ort1, h_ort1, G_soc1, h_soc1 = problem_matrices(prim1,prim1.r,prim1.q)
@@ -173,13 +173,13 @@ end
 
     # create and solve SOCP
     c,G,h,idx_ort,idx_soc1,idx_soc2 = combine_problem_matrices(G_ort1, h_ort1, G_soc1, h_soc1,G_ort2, h_ort2, G_soc2, h_soc2)
-    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2; verbose = false, pdip_tol = pdip_tol)
+    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2; verbose = verbose, pdip_tol = pdip_tol)
 
     ∂x_∂state= diff_socp(prim1,prim2,x,s,z,idx_ort,idx_soc1,idx_soc2)
 
     return x[4], x[SA[1,2,3]], ∂x_∂state
 end
-@inline function proximity_jacobian(prim1::P1,prim2::P2; pdip_tol::Float64 = 1e-6) where {P1 <: AbstractPrimitiveMRP, P2 <: AbstractPrimitiveMRP}
+@inline function proximity_jacobian(prim1::P1,prim2::P2; pdip_tol::Float64 = 1e-6, verbose = false) where {P1 <: AbstractPrimitiveMRP, P2 <: AbstractPrimitiveMRP}
 
     # quaternion specific (for now TODO: add MRP support)
     G_ort1, h_ort1, G_soc1, h_soc1 = problem_matrices(prim1,prim1.r,prim1.p)
@@ -187,7 +187,7 @@ end
 
     # create and solve SOCP
     c,G,h,idx_ort,idx_soc1,idx_soc2 = combine_problem_matrices(G_ort1, h_ort1, G_soc1, h_soc1,G_ort2, h_ort2, G_soc2, h_soc2)
-    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2; verbose = false, pdip_tol = pdip_tol)
+    x,s,z = solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2; verbose = verbose, pdip_tol = pdip_tol)
 
     ∂x_∂state= diff_socp(prim1,prim2,x,s,z,idx_ort,idx_soc1,idx_soc2)
 

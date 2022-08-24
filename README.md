@@ -67,6 +67,27 @@ J &= \frac{\partial (x,\alpha) }{\partial (r_1,p_1,r_2,p_2)}
 \end{align*}
 $$
 
+## Visualizer 
+All of the primitives (both quaternion and MRP) can be visualized in [MeshCat](https://github.com/rdeits/MeshCat.jl). Below is an example of visualization for a cone:
+
+```julia
+import DCOL as dc 
+import Meshcat as mc 
+
+vis = mc.Visualizer()
+mc.open(vis)
+
+cone = dc.Cone(3.0,deg2rad(22))
+cone.r = @SVector randn(3)
+cone.q = normalize((@SVector randn(4)))
+
+# build primitive scaled by α = 1.0
+dc.build_primitive!(vis, cone, :cone; α = 1.0,color = mc.RGBA(1,0,0,0.0))
+
+# update position and attitude
+dc.update_pose!(vis[:cone],cone)
+```
+
 ## Algorithm
 DCOL calculates the collision information between two primitives by solving for the minimum scaling applied to both primitives that result in an intersection. This is done by forming an optimization problem with the following primal variables:
 

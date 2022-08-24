@@ -1,9 +1,12 @@
 
-function update_pose!(vis,P)
-    mc.settransform!(vis, mc.Translation(P.r) ∘ mc.LinearMap(mc.QuatRotation(P.q)))
+function update_pose!(vis,P::AbstractPrimitive)
+    mc.settransform!(vis, mc.Translation(P.r) ∘ mc.LinearMap(dcm_from_q(P.q)))
+end
+function update_pose!(vis,P::AbstractPrimitiveMRP)
+    mc.settransform!(vis, mc.Translation(P.r) ∘ mc.LinearMap(dcm_from_p(P.p)))
 end
 
-function build_primitive!(vis,P::Polytope{n,n3,T},poly_name::Symbol;color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {n,n3,T}
+function build_primitive!(vis,P::Union{Polytope{n,n3,T},PolytopeMRP{n,n3,T}},poly_name::Symbol;color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {n,n3,T}
     N = length(P.b)
     h = Polyhedra.HalfSpace(P.A[1,:],α*P.b[1])
     for i = 2:N
@@ -27,7 +30,7 @@ function build_primitive!(vis, C::Union{Capsule{T},CapsuleMRP{T}}, cap_name::Sym
 end
 
 
-function build_primitive!(vis, C::Cylinder{T}, cyl_name::Symbol;color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
+function build_primitive!(vis, C::Union{Cylinder{T},CylinderMRP{T}}, cyl_name::Symbol;color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
     a = α*[-C.L/2,0,0]
     b = α*[C.L/2,0,0]
     cyl = mc.Cylinder(mc.Point(a...), mc.Point(b...), α*C.R)
@@ -43,7 +46,7 @@ function build_primitive!(vis, C::Union{Cone{T},ConeMRP{T}},cone_name::Symbol; c
 end
 
 
-function build_primitive!(vis, C::Sphere{T},sphere_name::Symbol; color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
+function build_primitive!(vis, C::Union{Sphere{T},SphereMRP{T}},sphere_name::Symbol; color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
 	spha = mc.HyperSphere(mc.Point(0,0,0.0), α*C.R)
 	mc.setobject!(vis[sphere_name], spha, mc.MeshPhongMaterial(color=color))
 end
@@ -76,7 +79,7 @@ function find_verts(A,b)
     idx = sortperm(angs)
     return verts[idx] # return ordered vertices
 end
-function build_primitive!(vis,P::Polygon{nh,nh2,T}, poly_name::Symbol; color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1 ) where {nh,nh2,T}
+function build_primitive!(vis,P::Union{Polygon{nh,nh2,T},PolygonMRP{nh,nh2,T}}, poly_name::Symbol; color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1 ) where {nh,nh2,T}
 
 	A, b, R = P.A, P.b, P.R
 	b = α*b

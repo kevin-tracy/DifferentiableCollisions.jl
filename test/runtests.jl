@@ -5,7 +5,7 @@ using BenchmarkTools
 using SparseArrays
 using JLD2
 
-import DCD
+import DCOL as DCD
 import FiniteDiff
 import ForwardDiff
 import Random

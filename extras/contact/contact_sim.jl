@@ -13,6 +13,7 @@ import DifferentialProximity as dp
 import Random
 using Colors
 
+
 # function mass_properties(cone::Union{dc.Cone{T},dc.ConeMRP{T}}; ρ = 1.0) where {T}
 #     r = tan(cone.β)*cone.H
 #     V = (1/3)*(pi*(r^2)*cone.H)
@@ -85,8 +86,8 @@ const idx_Δz1 = 1:6
 const idx_Δz2 = 7:12
 const idx_s = 15
 const idx_λ = 16
-const idx_s_pin1 = 17:21
-const idx_λ_pin1 = 22:26
+# const idx_s_pin1 = 17:21
+const idx_λ_pin1 = 17:21
 
 function DEL(z₋,z,z₊,J1,J2,m1,m2,h)
     [
@@ -129,11 +130,25 @@ function contact_kkt(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,κ)
     s = z₊[idx_s]
     λ = z₊[idx_λ]
 
+    # s_pin1 = z₊[idx_s_pin1]
+    λ_pin1 = z₊[idx_λ_pin1]
+
     # jacobian of contact at middle step
+    # @info "about to take derivatives"
     update_pills!(z,P1,P2)
     _,_,D_state = dc.proximity_jacobian(P1,P2; pdip_tol = 1e-6)
+    # @info "took proximity jacobian"
     D_α = reshape(D_state[4,:],1,14)
-    E = h*Diagonal(kron(ones(2),[ones(3);0.5*ones(3)])) * (D_α*Gbar(z))'*[λ]
+    # D_p1 = D_pin_con(SVector{14}(z[1:14]))
+    z_small = z[1:14]
+    # @show pin_con(z_small)
+    # @show FD2.finite_difference_jacobian(pin_con, z_small)
+    # error()
+    # D_p1 = FD2.finite_difference_jacobian(pin_con,z_small)
+    D_p1 = FD.jacobian(pin_con, z_small)
+    # @info "took pin jacobian"
+    E = h*Diagonal(kron(ones(2),[ones(3);0.5*ones(3)])) * (D_α*Gbar(z))'*[λ] + h*(D_p1*Gbar(z))'*λ_pin1
+    # @info "took derivatives"
 
     # conatct stuff at + time step
     update_pills!(z₊,P1,P2)
@@ -143,7 +158,8 @@ function contact_kkt(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,κ)
     single_DEL(z₋[idx_z1],z[idx_z1],z₊[idx_z1],J1,m1,h) + E[1:6];#+ h*get_ft(z[idx_z1],p1,n1,λ);
     single_DEL(z₋[idx_z2],z[idx_z2],z₊[idx_z2],J2,m2,h) + E[7:12];#h*get_ft(z[idx_z2],p2,n2,λ);
     s - (α₊ - 1);#s - dp.proximity(dp_P1,dp_P2)#s - (α₊ - 1);
-    s*λ - κ
+    s*λ - κ;
+    pin_con(z₊)
     ]
 end
 function contact_kkt_jacobian(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,κ)
@@ -189,27 +205,34 @@ function update_z(z,Δz)
     znew[idx_z2[4:7]]  = L(znew[idx_z2[4:7]])*ρ(Δz[idx_Δz2[4:6]])
     znew[idx_s]       += Δz[idx_s - 2]
     znew[idx_λ]       += Δz[idx_λ - 2]
+    # znew[idx_s_pin1]       += Δz[idx_s_pin1 .- 2]
+    znew[idx_λ_pin1]       += Δz[idx_λ_pin1 .- 2]
     return znew
 end
 function pin_con(z)
     r1,q1,r2,q2 = get_states(z)
-    Q1 = dc.dcm_from_q(q1)
+    Q1 = dc.dcm_from_q(SVector{4}(q1))
     [
-    r1 + Q1*SA[6/2,0,0] - SA[0,0,3.0];
+    r1 + Q1*SA[-6/2,0,0] - SA[0,0,3.0];
     q1[SA[2,3]]
     ]
 end
-function D_pin_con(z)
-    ForwardDiff.jacobian(D_pin_con,z)
+function D_pin_con(_z)
+    FD.jacobian(D_pin_con,_z[1:14])
 end
 function ncp_solve(z₋,z,J1,J2,m1,m2,h,P1,P2,dp_P1, dp_P2)
     z₊ = copy(z) #+ .1*abs.(randn(length(z)))
     z₊[idx_s]+=1
     z₊[idx_λ]+=1
+    # z₊[idx_s_pin1] .= 0
+    z₊[idx_λ_pin1] .= 0
     @printf "iter    |∇ₓL|      |c|        κ          μ          α         αs        αλ\n"
     @printf "--------------------------------------------------------------------------\n"
+
+    # @info "inside NCP solve"
     for i = 1:30
         rhs1 = -contact_kkt(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,0)
+        # @info "took RHS"
         if norm(rhs1)<1e-6
             @info "success"
             return z₊
@@ -217,10 +240,11 @@ function ncp_solve(z₋,z,J1,J2,m1,m2,h,P1,P2,dp_P1, dp_P2)
 
         # finite diff for contact KKT
         D = FD2.finite_difference_jacobian(_z -> contact_kkt(z₋,z,_z,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,0),z₊)
+        # @info "took jacob"
         # D = contact_kkt_jacobian(z₋,z,z₊,J1,J2,m1,m2,P1,P2,dp_P1, dp_P2, h,0)
 
         # use G bar to handle quats and factorize
-        F = factorize(D*blockdiag(Gbar(z₊),sparse(I(2))))
+        F = factorize(D*blockdiag(Gbar(z₊),sparse(I(7))))
 
         # affine step
         Δa = F\rhs1
@@ -256,7 +280,7 @@ function viss()
 
     dp_P1 = dp.create_capsule(:quat)
     dp_P2 = dp.create_capsule(:quat)
-    P1 = dc.Capsule(0.2,6.0)
+    P1 = dc.Cylinder(0.2,6.0)
     # P1 = dc.Sphere(1.0)
     # P2 = dc.Capsule(1.0,4.0)
     P2 = dc.Sphere(1.5)
@@ -273,6 +297,7 @@ function viss()
     # P2.q = normalize(@SVector randn(4))
     P1.r = SA[3,0,3.0]
     P2.r = SA[8,0,8.0]
+    # P1.q = SA[cos(.1/2),0,0,sin(.1/2)]
     # P1.q = normalize(@SVector randn(4))
     # P2.q = normalize(@SVector randn(4))
 
@@ -281,7 +306,7 @@ function viss()
 
     # @show typeof(m1)
     # @show typeof(J1)
-    m1,J1 = dc.mass_properties(P1)
+    m1,J1 = dc.mass_properties(dc.Capsule(0.2,6.0))
     # m2,J2 = dc.mass_properties(P2)
     m2 = 1*4*(pi*1.5^3)/3
     J2 = (2/5)*m2*1.5^2*Diagonal(SA[1,1,1])
@@ -292,20 +317,24 @@ function viss()
     v1 = 0*SA[1,0,0.0]
     v2 = 4*SA[-1,.1,-1]
     ω1 = deg2rad(0)*randn(3)
-    ω2 = deg2rad(5)*randn(3)
+    ω2 = deg2rad(0)*randn(3)
     z0 = vcat(P1.r,P1.q,P2.r,P2.q)
     z1 = vcat(P1.r + h*v1,L(P1.q)*Expq(h*ω1),P2.r + v2*h,L(P2.q)*Expq(h*ω2))
     # z0 = vcat(P1.r,P1.q)
     # z1 = vcat(P1.r + h*v1, L(P1.q)*Expq(h*ω1))
 
     N = 300
-    Z= [zeros(16) for i = 1:N]
-    Z[1] = [z0;ones(2)]
-    Z[2] = [z1;ones(2)]
+    Z= [zeros(21) for i = 1:N]
+    Z[1] = [z0;ones(2);zeros(5)]
+    Z[2] = [z1;ones(2);zeros(5)]
+
     for i = 2:N-1
         # Z[i+1] = single_newton_solve(Z[i-1],Z[i],J1,m1,h)
         # Z[i+1] = newton_solve(Z[i-1],Z[i],J1,J2,m1,m2,h)
+        # @show start NCP solve
         Z[i+1] = ncp_solve(Z[i-1],Z[i],J1,J2,m1,m2,h, P1, P2, dp_P1, dp_P2)
+        println("-----------------ITER NUMBER---------------")
+        # @show i
 
         if abs(norm(Z[i+1][4:7]) - 1) > 1e-13
             error("quat 1 is fucked")
@@ -322,23 +351,21 @@ function viss()
     αs = zeros(N)
     for i = 1:N
         update_pills!(Z[i],P1,P2)
-        α, x = dc.proximity(P1, P2; pdip_tol = 1e-10)
+        α, x = dc.proximity(P1, P2; verbose = true, pdip_tol = 1e-6)
         p1 = P1.r + (x - P1.r)/α
         p2 = P2.r + (x - P2.r)/α
         p1s[i] = p1
         p2s[i] = p2
         αs[i] = (α - 1)
 
-        # update_pills!(Z[i],dp_P1,dp_P2)
-        # dp_p1s[i], dp_p2s[i], n1, n2 = dp.closest_points(dp_P1,dp_P2;pdip_tol = 1e-12)
-
     end
 
 
+    # M = hcat(Z...)
     # mat"
     # figure
     # hold on
-    # plot($αs)
+    # plot($M(4:7,:)')
     # hold off
     # "
 

@@ -175,7 +175,7 @@ function solve_socp(c::SVector{nx,T},
         cone_degree += 1
     end
 
-    for main_iter = 1:20
+    for main_iter = 1:50
 
         W = calc_NT_scalings(s,z,idx_ort,idx_soc1,idx_soc2)
 

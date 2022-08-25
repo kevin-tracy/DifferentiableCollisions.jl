@@ -8,7 +8,7 @@ using Printf
 using SparseArrays
 import MeshCat as mc
 import DCOL as dc
-using MATLAB
+# using MATLAB
 import Random
 using Colors
 using Printf
@@ -181,7 +181,7 @@ function ncp_solve(w₋, w, P, inertias, masses, idx)
     @printf "--------------------------------------------------------------------------\n"
 
     # @info "inside NCP solve"
-    for i = 1:30
+    for main_iter = 1:30
         rhs1 = -contact_kkt(w₋, w, w₊, P, inertias, masses, idx, 0)
         if norm(rhs1)<1e-6
             @info "success"
@@ -231,26 +231,38 @@ function ncp_solve(w₋, w, P, inertias, masses, idx)
         w₊ = update_w(w₊,α*Δ,idx)
 
         @printf("%3d    %9.2e  %9.2e  %9.2e  %9.2e  % 6.4f % 6.4f % 6.4f\n",
-          i, norm(rhs1[1:12]), norm(rhs1[13:14]), κ, μ, α, α1, α2)
+          main_iter, norm(rhs1[1:(6*idx.N_bodies)]), norm(rhs1[(6*idx.N_bodies) .+ (1:idx.N_interactions)]), κ, μ, α, α1, α2)
 
     end
     error("newton failed")
 end
 
-N_bodies = 9 # TODO: don't forget to change this back
 
-idx = create_indexing(N_bodies)
+
 h = 0.05
-P = [dc.Cylinder(0.2,6.0), dc.Capsule(0.4,3.0), dc.Sphere(1.5),
-dc.Cylinder(0.2,6.0), dc.Capsule(0.4,3.0), dc.Sphere(1.5),
-dc.Cylinder(0.2,6.0), dc.Capsule(0.4,3.0), dc.Sphere(1.5) ]
+function create_n_sided(N,d)
+    ns = [ [cos(θ);sin(θ)] for θ = 0:(2*π/N):(2*π*(N-1)/N)]
+    A = vcat(transpose.((ns))...)
+    b = d*ones(N)
+    return SMatrix{N,2}(A), SVector{N}(b)
+end
+using JLD2
+@load "/Users/kevintracy/.julia/dev/DifferentialProximity/extras/polyhedra_plotting/polytopes.jld2"
+P = [dc.Cylinder(0.6,3.0), dc.Capsule(0.2,5.0), dc.Sphere(0.8),
+     dc.Cone(2.0, deg2rad(22)),dc.Polytope(SMatrix{8,3}(A2),SVector{8}(b2)),dc.Polygon(create_n_sided(5,0.6)...,0.2),
+     dc.Cylinder(1.1,2.3), dc.Capsule(0.8,1.0), dc.Sphere(0.5),
+          dc.Cone(3.0, deg2rad(32)),dc.Polytope(SMatrix{14,3}(A1),SVector{14}(b1)),dc.Polygon(create_n_sided(8,0.8)...,0.15)]
+# dc.Cylinder(0.6,3.0), dc.Capsule(0.2,5.0), dc.Sphere(0.8),dc.Cone(2.0, deg2rad(22))]
+
+N_bodies = length(P)
 @assert length(P) == N_bodies
+idx = create_indexing(N_bodies)
 
 masses = ones(N_bodies)
 inertias = [Diagonal(SA[1,2,3.0]) for i = 1:N_bodies]
 
 # rs = [SA[-2,1,2.0], SA[1,-1.0,2.5], SA[0,0,6.0]]
-rs = [10*(@SVector randn(3)) for i = 1:N_bodies]
+rs = [5*(@SVector randn(3)) for i = 1:N_bodies]
 qs = [SA[1,0,0,0.0] for i = 1:N_bodies]
 
 w0 = vcat([[rs[i];qs[i]] for i = 1:N_bodies]..., zeros(2*idx.N_interactions))

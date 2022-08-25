@@ -47,6 +47,8 @@ function create_indexing(N_bodies)
     idx_λ = idx_s[end][end] .+ (1:N_interactions)
     idx_Δλ = idx_λ .- N_bodies
 
+    idx_α = 6*N_bodies .+ (1:N_interactions)
+
     idx = (
     z = idx_z,
     s = idx_s,
@@ -56,7 +58,8 @@ function create_indexing(N_bodies)
     Δλ = idx_Δλ,
     interactions = interactions,
     N_interactions = N_interactions,
-    N_bodies = N_bodies
+    N_bodies = N_bodies,
+    α = idx_α
     )
 
     return idx
@@ -66,7 +69,7 @@ end
 function update_objects!(P, w, idx)
     for i = 1:idx.N_bodies
         P[i].r = w[idx.z[i][SA[1,2,3]]]
-        P[i].q = w[idx.z[i][SA[4,5,6,7]]]
+        P[i].q = normalize(w[idx.z[i][SA[4,5,6,7]]])
     end
     nothing
 end
@@ -74,6 +77,14 @@ end
 function contacts(P,idx)
     # returns α - 1 for all contacts
     [(dc.proximity(P[i],P[j])[1] - 1) for (i,j) in idx.interactions]
+    # as = zeros(idx.N_interactions)
+    # for k = 1:idx.N_interactions
+    #     i,j = idx.interactions[k]
+    #     @show P[i]
+    #     @show P[j]
+    #     as[i] = dc.proximity(P[i],P[j])[1] - 1
+    # end
+    # as
 end
 function linesearch(x,dx)
     α = min(0.99, minimum([dx[i]<0 ? -x[i]/dx[i] : Inf for i = 1:length(x)]))
@@ -114,8 +125,8 @@ function contact_kkt(w₋, w, w₊, P, inertias, masses, idx, κ)
 
     # now we add the jacobian functions stuff at middle time step
     update_objects!(P,w,idx)
-    for k = 1:length(interactions)
-        i,j = interactions[k]
+    for k = 1:idx.N_interactions
+        i,j = idx.interactions[k]
         _,_,D_state = dc.proximity_jacobian(P[i],P[j]; pdip_tol = 1e-6)
         D_α = reshape(D_state[4,:],1,14)
         E = h * τ_mod * (D_α*Gbar_2_body(w, idx.z[i], idx.z[j]))'*[λ[k]]
@@ -133,11 +144,38 @@ function contact_kkt(w₋, w, w₊, P, inertias, masses, idx, κ)
     (s .* λ) .- κ;
     ]
 end
+function contact_kkt_no_α(w₋, w, w₊, P, inertias, masses, idx, κ)
+    s = w₊[idx.s]
+    λ = w₊[idx.λ]
 
+    # DEL stuff for each body
+    DELs = [single_DEL(w₋[idx.z[i]],w[idx.z[i]],w₊[idx.z[i]],inertias[i],masses[i],h) for i = 1:length(P)]
+
+    # now we add the jacobian functions stuff at middle time step
+    update_objects!(P,w,idx)
+    for k = 1:idx.N_interactions
+        i,j = idx.interactions[k]
+        _,_,D_state = dc.proximity_jacobian(P[i],P[j]; pdip_tol = 1e-6)
+        D_α = reshape(D_state[4,:],1,14)
+        E = h * τ_mod * (D_α*Gbar_2_body(w, idx.z[i], idx.z[j]))'*[λ[k]]
+        DELs[i] += E[1:6]
+        DELs[j] += E[7:12]
+    end
+
+    # now get contact stuff for + time step
+    # update_objects!(P,w₊,idx)
+    # αs = contacts(P,idx)
+
+    [
+    vcat(DELs...);
+    s; #- αs;
+    (s .* λ) .- κ;
+    ]
+end
 function ncp_solve(w₋, w, P, inertias, masses, idx)
     w₊ = copy(w) #+ .1*abs.(randn(length(z)))
-    w₊[idx.s] .+=1
-    w₊[idx.λ] .+=1
+    w₊[idx.s] .+= .1
+    w₊[idx.λ] .+= .1
 
     @printf "iter    |∇ₓL|      |c|        κ          μ          α         αs        αλ\n"
     @printf "--------------------------------------------------------------------------\n"
@@ -151,7 +189,21 @@ function ncp_solve(w₋, w, P, inertias, masses, idx)
         end
 
         # finite diff for contact KKT
-        D = FD2.finite_difference_jacobian(_w -> contact_kkt(w₋, w, _w, P, inertias, masses, idx, 0.0),w₊)
+        # D = FD2.finite_difference_jacobian(_w -> contact_kkt(w₋, w, _w, P, inertias, masses, idx, 0.0),w₊)
+        D = FD.jacobian(_w -> contact_kkt_no_α(w₋, w, _w, P, inertias, masses, idx, 0.0),w₊)
+
+        # add jacobians for all our stuff
+        update_objects!(P,w₊,idx)
+        for k = 1:idx.N_interactions
+            i,j = idx.interactions[k]
+            (dc.proximity(P[i],P[j])[1] - 1)
+            _,_,D_α = dc.proximity_jacobian(P[i],P[j])
+            D_α = reshape(D_α[4,:],1,14)
+            D[idx.α[k],idx.z[i]] = -D_α[1,idx.z[1]]
+            D[idx.α[k],idx.z[j]] = -D_α[1,idx.z[2]]
+        end
+
+
 
         # use G bar to handle quats and factorize
         F = factorize(D*Gbar(w₊,idx))
@@ -185,28 +237,37 @@ function ncp_solve(w₋, w, P, inertias, masses, idx)
     error("newton failed")
 end
 
-N_bodies = 3
+N_bodies = 9 # TODO: don't forget to change this back
 
 idx = create_indexing(N_bodies)
 h = 0.05
-P = [dc.Cylinder(0.2,6.0), dc.Capsule(0.4,3.0), dc.Sphere(1.5) ]
+P = [dc.Cylinder(0.2,6.0), dc.Capsule(0.4,3.0), dc.Sphere(1.5),
+dc.Cylinder(0.2,6.0), dc.Capsule(0.4,3.0), dc.Sphere(1.5),
+dc.Cylinder(0.2,6.0), dc.Capsule(0.4,3.0), dc.Sphere(1.5) ]
+@assert length(P) == N_bodies
+
 masses = ones(N_bodies)
 inertias = [Diagonal(SA[1,2,3.0]) for i = 1:N_bodies]
 
-rs = [SA[-2,1,2.0], SA[1,-1.0,2.5], SA[0,0,6.0]]
+# rs = [SA[-2,1,2.0], SA[1,-1.0,2.5], SA[0,0,6.0]]
+rs = [10*(@SVector randn(3)) for i = 1:N_bodies]
 qs = [SA[1,0,0,0.0] for i = 1:N_bodies]
 
 w0 = vcat([[rs[i];qs[i]] for i = 1:N_bodies]..., zeros(2*idx.N_interactions))
 
-vs =  [SA[0,0,0.0], SA[0,0,0.0], SA[0,0,-2.0]]
-ωs = [deg2rad.(SA[-3,3,-3.0]), deg2rad.(SA[3,3,-3.0]),deg2rad.(SA[3,-3,3.0])]
+vs =  [SA[1,1,1.0] for i = 1:N_bodies]
+for i = 1:N_bodies
+    vs[i] = -.5*rs[i]
+end
+
+ωs = [deg2rad.(10*(@SVector randn(3))) for i = 1:N_bodies]
 
 r2s = [(rs[i] + h*vs[i]) for i = 1:N_bodies]
 q2s = [(L(qs[i])*Expq(h*ωs[i])) for i = 1:N_bodies]
 w1 = vcat([[r2s[i];q2s[i]] for i = 1:N_bodies]..., zeros(2*idx.N_interactions))
 
 N = 100
-W = [zeros(length(z0)) for i = 1:N]
+W = [zeros(length(w0)) for i = 1:N]
 W[1] = w0
 W[2] = w1
 
@@ -219,7 +280,7 @@ mc.open(vis)
 
 
 for i = 1:N_bodies
-    dc.build_primitive!(vis, P[i], Symbol("P"*string(i)); α = 1.0,color = mc.RGBA(normalize(randn(3))..., 1.0))
+    dc.build_primitive!(vis, P[i], Symbol("P"*string(i)); α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
 end
 
 # mc.setprop!(vis["/Background"], "top_color", colorant"transparent")

@@ -1,19 +1,23 @@
-import Pkg; Pkg.activate("/Users/kevintracy/.julia/dev/DCD/extras")
+import Pkg; Pkg.activate("/Users/kevintracy/.julia/dev/DCOL/extras")
 
 using LinearAlgebra
 using Convex, ECOS
 using JLD2
 using StaticArrays
-import DCD
+import DCOL as DCD
 import MeshCat as mc
 
-P1 = DCD.Cylinder(.5,1.6)
-P2 = DCD.Cylinder(.8,1.2)
-
-P1.r = 1*(@SVector randn(3))
-P1.q = normalize((@SVector randn(4)))
-P2.r = 1*(@SVector randn(3))
-P2.q = normalize((@SVector randn(4)))
+# P[i] = DCOL.Cylinder{Float64}([-5.368662702656875, 8.974385518452474, 5.606792153925045], [0.9998287695350996, 0.0019375112500538785, 0.00853321014210256, -0.016305274752530418], 0.2, 6.0)
+# P[j] = DCOL.Cylinder{Float64}([26.0327343468262, -3.3561862263906224, -11.291884061747645], [0.9999943160426544, 0.0009495365298086777, -0.003235016554094766, -3.0506673375079792e-5], 0.2, 6.0)
+P1 = DCD.Cylinder(0.2, 6.0)
+P2 = DCD.Capsule(0.4, 3.0)
+# P[i] = DCOL.Cylinder{Float64}([-10.294711205781873, 9.422318612157477, -2.5271797891641055], [0.9999478589210509, 0.007850846275322574, -0.004307525479818885, -0.004908041993340861], 0.2, 6.0)
+# P[j] = DCOL.Capsule{Float64}([1.3755017007655561, 2.0989534181131226, -8.585045664029508], [0.9999958893395952, 0.0025202547682978086, 0.0012143182007264834, -0.0006285309241480358], 0.4, 3.0)
+#
+P1.r = SA[-10.294711205781873, 9.422318612157477, -2.5271797891641055]
+P1.q = SA[0.9999478589210509, 0.007850846275322574, -0.004307525479818885, -0.004908041993340861]
+P2.r = SA[1.3755017007655561, 2.0989534181131226, -8.585045664029508]
+P2.q = SA[0.9999958893395952, 0.0025202547682978086, 0.0012143182007264834, -0.0006285309241480358]
 
 # @inline function polygon_problem_matrices(A::SMatrix{nh,2,T1,nh3},b::SVector{nh,T2},R::Float64, r::SVector{3,T3},n_Q_b::SMatrix{3,3,T4,9}) where {nh,nh3,T1,T2,T3,T4}
 #     Q̃ = n_Q_b[:,SA[1,2]]
@@ -35,36 +39,36 @@ P2.q = normalize((@SVector randn(4)))
 #     polytope_problem_matrices(polytope.A,polytope.b,r,n_Q_b)
 # end
 
-x = Variable(3)
-γ1 = Variable()
-γ2 = Variable()
-α = Variable()
+# x = Variable(3)
+# γ1 = Variable()
+# γ2 = Variable()
+# α = Variable()
+#
+# Q1 = DCD.dcm_from_q(P1.q)
+# bz1 = Q1*SA[1,0,0]
+# Q2 = DCD.dcm_from_q(P2.q)
+# bz2 = Q2*SA[1,0,0]
+#
+# prob = minimize(α)
+# prob.constraints += α >= 0
+#
+# prob.constraints += norm(x - (P1.r + γ1*bz1)) <= α*P1.R
+# prob.constraints += γ1 <=  α*P1.L/2
+# prob.constraints += γ1 >= -α*P1.L/2
+# prob.constraints += (x - (P1.r - α*bz1*P1.L/2))'*bz1 >= 0
+# prob.constraints += (x - (P1.r + α*bz1*P1.L/2))'*bz1 <= 0
+#
+# prob.constraints += norm(x - (P2.r + γ2*bz2)) <= α*P2.R
+# prob.constraints += γ2 <=  α*P2.L/2
+# prob.constraints += γ2 >= -α*P2.L/2
+# prob.constraints += (x - (P2.r - α*bz2*P2.L/2))'*bz2 >= 0
+# prob.constraints += (x - (P2.r + α*bz2*P2.L/2))'*bz2 <= 0
+#
+# solve!(prob, ECOS.Optimizer)
+# α = α.value
+# x = vec(x.value)
 
-Q1 = DCD.dcm_from_q(P1.q)
-bz1 = Q1*SA[1,0,0]
-Q2 = DCD.dcm_from_q(P2.q)
-bz2 = Q2*SA[1,0,0]
-
-prob = minimize(α)
-prob.constraints += α >= 0
-
-prob.constraints += norm(x - (P1.r + γ1*bz1)) <= α*P1.R
-prob.constraints += γ1 <=  α*P1.L/2
-prob.constraints += γ1 >= -α*P1.L/2
-prob.constraints += (x - (P1.r - α*bz1*P1.L/2))'*bz1 >= 0
-prob.constraints += (x - (P1.r + α*bz1*P1.L/2))'*bz1 <= 0
-
-prob.constraints += norm(x - (P2.r + γ2*bz2)) <= α*P2.R
-prob.constraints += γ2 <=  α*P2.L/2
-prob.constraints += γ2 >= -α*P2.L/2
-prob.constraints += (x - (P2.r - α*bz2*P2.L/2))'*bz2 >= 0
-prob.constraints += (x - (P2.r + α*bz2*P2.L/2))'*bz2 <= 0
-
-solve!(prob, ECOS.Optimizer)
-α = α.value
-x = vec(x.value)
-
-α2,x2 = DCD.proximity(P1,P2; pdip_tol = 1e-10, verbose = true)
+α,x = DCD.proximity(P1,P2; pdip_tol = 1e-10, verbose = true)
 # # new formulation
 # G_ort1, h_ort1, G_soc1, h_soc1 = polygon_problem_matrices(P1.A,P1.b,P1.R, P1.r,DCD.dcm_from_q(P1.q))
 # G_ort2, h_ort2, G_soc2, h_soc2 = polygon_problem_matrices(P2.A,P2.b,P2.R, P2.r,DCD.dcm_from_q(P2.q))

@@ -20,7 +20,7 @@ Each primitive is implemented as a struct in DCOL. The defining dimensions for e
 ```julia
 import DCOL as dc
 
-polytype = dc.Polytope(A, b)   # polytope is described by Ax <= b
+polytope = dc.Polytope(A, b)   # polytope is described by Ax <= b
 capsule  = dc.Capsule(R, L)    # radius R, length L
 cylinder = dc.Cylinder(R, L)   # radius R, length L
 cone     = dc.Cone(H, β)       # height H, half angle β

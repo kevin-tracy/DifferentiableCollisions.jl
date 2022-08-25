@@ -1,19 +1,24 @@
 import Pkg; Pkg.activate("/Users/kevintracy/.julia/dev/DCD/extras")
 
 using LinearAlgebra
-using Convex, ECOS
-using JLD2
+# using Convex, ECOS
+# using JLD2
 using StaticArrays
-import DCD
-import MeshCat as mc
+# import DCD
+# import MeshCat as mc
 
 
-P1 = DCD.Sphere(1.3)
-P2 = DCD.Sphere(0.9)
+P1 = dc.Cylinder(0.2,6.0)
+P1.r = SA[-2.060591844588282, 1.5014612268199545, 0.7960299106595818]
+P1.q = SA[0.7487350592889878, -0.14145087058157196, 0.6406967703766469, 0.09431389416305383]
+P2 = dc.Sphere(1.5)
+P2.r = SA[0.23963980695523235, 0.9055800161308247, -0.25683460227412674]
 
-P1.r = 2*(@SVector randn(3))
-# P1.q = normalize((@SVector randn(4)))
-P2.r = 1*(@SVector randn(3))
+# P1 = dc.Cylinder{Float64}(SA[-2.060591844588282, 1.5014612268199545, 0.7960299106595818], SA[0.7487350592889878, -0.14145087058157196, 0.6406967703766469, 0.09431389416305383], 0.2, 6.0)
+#
+# P1.r = 2*(@SVector randn(3))
+# # P1.q = normalize((@SVector randn(4)))
+# P2.r = 1*(@SVector randn(3))
 # P2.q = normalize((@SVector randn(4)))
 
 # @inline function problem_matrices(sphere::DCD.Sphere{T},r::SVector{3,T1},any_attitude::SVector{n,T2}) where {T,T1,T2,n}
@@ -34,20 +39,20 @@ P2.r = 1*(@SVector randn(3))
 #     return G_ort, h_ort, G_soc, h_soc
 # end
 
-x = Variable(3)
-α = Variable()
-
-
-prob = minimize(α)
-prob.constraints += α >= 0
-prob.constraints += norm(x - P1.r) <= α*P1.R
-prob.constraints += norm(x - P2.r) <= α*P2.R
-
-solve!(prob, ECOS.Optimizer)
-α = α.value
-x = vec(x.value)
-
-α2, x2 = DCD.proximity(P1,P2)
+# x = Variable(3)
+# α = Variable()
+#
+#
+# prob = minimize(α)
+# prob.constraints += α >= 0
+# prob.constraints += norm(x - P1.r) <= α*P1.R
+# prob.constraints += norm(x - P2.r) <= α*P2.R
+#
+# solve!(prob, ECOS.Optimizer)
+# α = α.value
+# x = vec(x.value)
+#
+α, x = dc.proximity(P1,P2)
 # α2, x2, J = DCD.proximity_jacobian(P1,P2)
 # @btime DCD.proximity($P1,$P2)
 # @btime DCD.proximity_jacobian($P1,$P2)
@@ -81,8 +86,8 @@ x = vec(x.value)
 # α_star, x_star = DCD.proximity(P1,P2)
 # @btime DCD.proximity($P1,$P2)
 
-# vis = mc.Visualizer()
-# open(vis)
+vis = mc.Visualizer()
+open(vis)
 
 c1 = [245, 155, 66]/255
 c2 = [2,190,207]/255
@@ -96,15 +101,15 @@ else
     trans_1 = 0.5
 end
 
-DCD.build_primitive!(vis, P1, :polytope1; α = 1.0,color = mc.RGBA(c1..., trans_1))
-DCD.build_primitive!(vis, P2, :polytope2; α = 1.0,color = mc.RGBA(c2..., trans_1))
-DCD.build_primitive!(vis, P1, :polytope1_big; α = α,color = mc.RGBA(c1..., trans_2))
-DCD.build_primitive!(vis, P2, :polytope2_big; α = α,color = mc.RGBA(c2..., trans_2))
+dc.build_primitive!(vis, P1, :polytope1; α = 1.0,color = mc.RGBA(c1..., trans_1))
+dc.build_primitive!(vis, P2, :polytope2; α = 1.0,color = mc.RGBA(c2..., trans_1))
+dc.build_primitive!(vis, P1, :polytope1_big; α = α,color = mc.RGBA(c1..., trans_2))
+dc.build_primitive!(vis, P2, :polytope2_big; α = α,color = mc.RGBA(c2..., trans_2))
 
-DCD.update_pose!(vis[:polytope1], P1)
-DCD.update_pose!(vis[:polytope2], P2)
-DCD.update_pose!(vis[:polytope1_big], P1)
-DCD.update_pose!(vis[:polytope2_big], P2)
+dc.update_pose!(vis[:polytope1], P1)
+dc.update_pose!(vis[:polytope2], P2)
+dc.update_pose!(vis[:polytope1_big], P1)
+dc.update_pose!(vis[:polytope2_big], P2)
 
 sph_p1 = mc.HyperSphere(mc.Point(x...), 0.1)
 mc.setobject!(vis[:p1], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(1.0,0,0,1.0)))

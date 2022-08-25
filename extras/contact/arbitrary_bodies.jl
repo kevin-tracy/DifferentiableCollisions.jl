@@ -174,8 +174,8 @@ function contact_kkt_no_α(w₋, w, w₊, P, inertias, masses, idx, κ)
 end
 function ncp_solve(w₋, w, P, inertias, masses, idx)
     w₊ = copy(w) #+ .1*abs.(randn(length(z)))
-    w₊[idx.s] .+= .1
-    w₊[idx.λ] .+= .1
+    w₊[idx.s] .+= 1
+    w₊[idx.λ] .+= 1
 
     @printf "iter    |∇ₓL|      |c|        κ          μ          α         αs        αλ\n"
     @printf "--------------------------------------------------------------------------\n"
@@ -251,18 +251,23 @@ using JLD2
 P = [dc.Cylinder(0.6,3.0), dc.Capsule(0.2,5.0), dc.Sphere(0.8),
      dc.Cone(2.0, deg2rad(22)),dc.Polytope(SMatrix{8,3}(A2),SVector{8}(b2)),dc.Polygon(create_n_sided(5,0.6)...,0.2),
      dc.Cylinder(1.1,2.3), dc.Capsule(0.8,1.0), dc.Sphere(0.5),
-          dc.Cone(3.0, deg2rad(32)),dc.Polytope(SMatrix{14,3}(A1),SVector{14}(b1)),dc.Polygon(create_n_sided(8,0.8)...,0.15)]
+          dc.Cone(3.0, deg2rad(18)),dc.Polytope(SMatrix{14,3}(A1),SVector{14}(b1)),dc.Polygon(create_n_sided(8,0.8)...,0.15)]
 # dc.Cylinder(0.6,3.0), dc.Capsule(0.2,5.0), dc.Sphere(0.8),dc.Cone(2.0, deg2rad(22))]
+P_floor, mass_floor, inertia_floor = create_rect_prism(len = 1,wid = 1,hei = 1)
+push!(P,P_floor)
 
 N_bodies = length(P)
 @assert length(P) == N_bodies
 idx = create_indexing(N_bodies)
 
 masses = ones(N_bodies)
+# masses[end] = mass_floor
 inertias = [Diagonal(SA[1,2,3.0]) for i = 1:N_bodies]
+# inertias[end] = inertia_floor
 
 # rs = [SA[-2,1,2.0], SA[1,-1.0,2.5], SA[0,0,6.0]]
 rs = [5*(@SVector randn(3)) for i = 1:N_bodies]
+rs[end] = SA[0,0,0.0]
 qs = [SA[1,0,0,0.0] for i = 1:N_bodies]
 
 w0 = vcat([[rs[i];qs[i]] for i = 1:N_bodies]..., zeros(2*idx.N_interactions))
@@ -272,7 +277,8 @@ for i = 1:N_bodies
     vs[i] = -.5*rs[i]
 end
 
-ωs = [deg2rad.(10*(@SVector randn(3))) for i = 1:N_bodies]
+ωs = [deg2rad.(20*(@SVector randn(3))) for i = 1:N_bodies]
+# ωs[end] = SA[0,0,0.0]
 
 r2s = [(rs[i] + h*vs[i]) for i = 1:N_bodies]
 q2s = [(L(qs[i])*Expq(h*ωs[i])) for i = 1:N_bodies]
@@ -284,6 +290,7 @@ W[1] = w0
 W[2] = w1
 
 for i = 2:N-1
+    println("------------------ITER NUMBER $i--------------------")
     W[i+1] = ncp_solve(W[i-1], W[i], P, inertias, masses, idx)
 end
 

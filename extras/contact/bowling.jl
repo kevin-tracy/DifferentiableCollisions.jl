@@ -145,7 +145,7 @@ function contact_kkt(w₋, w, w₊, P, P_floor, inertias, masses, idx, κ)
         DELs[j] += E[7:12]
     end
     for i = 1:idx.N_bodies
-        _,_,D_state = dc.proximity_jacobian(P[i],P_floor; pdip_tol = 1e-4)
+        _,_,D_state = dc.proximity_jacobian(P[i],P_floor; pdip_tol = 1e-6)
         D_α = reshape(D_state[4,:],1,14)
         E = h * τ_mod * (D_α*Gbar_2_body(w, idx.z[i], idx.z[i]))'*[λ_floor[i]] # NOTE: second z for Gbar isn't used
         DELs[i] += E[1:6]
@@ -185,7 +185,7 @@ function contact_kkt_no_α(w₋, w, w₊, P, P_floor, inertias, masses, idx, κ)
         DELs[j] += E[7:12]
     end
     for i = 1:idx.N_bodies
-        _,_,D_state = dc.proximity_jacobian(P[i],P_floor; pdip_tol = 1e-4)
+        _,_,D_state = dc.proximity_jacobian(P[i],P_floor; pdip_tol = 1e-6)
         D_α = reshape(D_state[4,:],1,14)
         E = h * τ_mod * (D_α*Gbar_2_body(w, idx.z[i], idx.z[i]))'*[λ_floor[i]] # NOTE: second z for Gbar isn't used
         DELs[i] += E[1:6]
@@ -235,7 +235,7 @@ function ncp_solve(w₋, w, P, P_floor, inertias, masses, idx)
             D[idx.α[k],idx.z[j]] = -D_α[1,idx.z[2]]
         end
         for i = 1:idx.N_bodies
-            _,_,D_α = dc.proximity_jacobian(P[i],P_floor; pdip_tol = 1e-4)
+            _,_,D_α = dc.proximity_jacobian(P[i],P_floor; pdip_tol = 1e-6)
             D_α = reshape(D_α[4,:],1,14)
             D[idx.α_floor[i],idx.z[i]] = -D_α[1,idx.z[1]]
         end
@@ -278,7 +278,7 @@ end
 
 
 
-h = 0.05
+h = 0.01
 function create_n_sided(N,d)
     ns = [ [cos(θ);sin(θ)] for θ = 0:(2*π/N):(2*π*(N-1)/N)]
     A = vcat(transpose.((ns))...)
@@ -287,9 +287,11 @@ function create_n_sided(N,d)
 end
 using JLD2
 @load "/Users/kevintracy/.julia/dev/DifferentialProximity/extras/polyhedra_plotting/polytopes.jld2"
-P = [dc.Sphere(0.8), dc.Sphere(1.0),dc.Cylinder(.5,2.0)]
+P = [dc.Cone(2.0, deg2rad(22)), dc.Sphere(1.0),dc.Capsule(.5,2.0),dc.Cylinder(.5,2.0),dc.Polygon(create_n_sided(8,0.6)...,0.13),dc.Polytope(SMatrix{14,3}(A1),SVector{14}(b1))]
 # dc.Cylinder(0.6,3.0), dc.Capsule(0.2,5.0), dc.Sphere(0.8),dc.Cone(2.0, deg2rad(22))]
-P_floor, mass_floor, inertia_floor = create_rect_prism(len = 10,wid = 10,hei = 1.0)
+# P_floor, mass_floor, inertia_floor = create_rect_prism(len = 20,wid = 20,hei = 1.0)
+P_floor = dc.Polygon(create_n_sided(4,10.0)...,2.0)
+P_floor.r = SA[0,0,-2.0]
 # push!(P,P_floor)
 
 N_bodies = length(P)
@@ -299,24 +301,27 @@ idx = create_indexing(N_bodies)
 masses = ones(N_bodies)
 inertias = [Diagonal(SA[1,2,3.0]) for i = 1:N_bodies]
 
-rs = [SA[-2,0,5.0],SA[5,0,5.0], SA[-5,.1,5.0]]
+# rs = [SA[-2,0,5.0],SA[5,0,5.0], SA[-5,.1,5.0]]
+using Random
+Random.seed!(1234)
+rs = [SA[4*randn(), 4*randn(), 6 + 2*randn()] for i = 1:N_bodies]
 qs = [SA[1,0,0,0.0] for i = 1:N_bodies]
-qs[3] = SA[cos(pi/4), 0,sin(pi/4),0]
+# qs[3] = SA[cos(pi/4), 0,sin(pi/4),0]
 
 w0 = vcat([[rs[i];qs[i]] for i = 1:N_bodies]..., zeros(2*idx.N_interactions + 2*idx.N_bodies))
 
-vs =  [SA[0,0,0.0] for i = 1:N_bodies]
-vs[2] = SA[-0.0,0,0]
+vs =  [-rs[i] for i = 1:N_bodies]
+# vs[2] = SA[-0.0,0,0]
 
 
-ωs = [deg2rad.(0*(@SVector randn(3))) for i = 1:N_bodies]
+ωs = [deg2rad.(5*(@SVector randn(3))) for i = 1:N_bodies]
 # ωs[end] = SA[0,0,0.0]
 
 r2s = [(rs[i] + h*vs[i]) for i = 1:N_bodies]
 q2s = [(L(qs[i])*Expq(h*ωs[i])) for i = 1:N_bodies]
 w1 = vcat([[r2s[i];q2s[i]] for i = 1:N_bodies]..., zeros(2*idx.N_interactions + 2*idx.N_bodies))
 
-N = 100
+N = 500
 W = [zeros(length(w0)) for i = 1:N]
 W[1] = w0
 W[2] = w1
@@ -328,14 +333,17 @@ end
 
 vis = mc.Visualizer()
 mc.open(vis)
+mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
+dc.set_floor!(vis; x = 20, y = 20)
 
 
 for i = 1:N_bodies
     dc.build_primitive!(vis, P[i], Symbol("P"*string(i)); α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
 end
-dc.build_primitive!(vis,P_floor, :floor)
+# dc.build_primitive!(vis,P_floor, :floor)
+# dc.update_pose!(vis[:floor],P_floor)
 # mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
-# dc.set_floor!(vis; x = 40, y = 40)
+# dc.set_floor!(vis; x = 20, y = 20)
 
 anim = mc.Animation(floor(Int,1/h))
 

@@ -7,7 +7,7 @@ function create_rect_prism(;len = 20.0, wid = 20.0, hei = 2.0)
 # hei = 2.0
 
     ns = [SA[1,0,0.0], SA[0,1,0.0], SA[0,0,1.0],SA[-1,0,0.0], SA[0,-1,0.0], SA[0,0,-1.0]]
-    cs = [SA[len,0,0.0], SA[0,wid,0.0], SA[0,0,hei],SA[-len,0,0.0], SA[0,-wid,0.0], SA[0,0,-hei]]
+    cs = [SA[len/2,0,0.0], SA[0,wid/2,0.0], SA[0,0,hei/2],SA[-len/2,0,0.0], SA[0,-wid/2,0.0], SA[0,0,-hei/2]]
 
     A = zeros(6,3)
     b = zeros(6)

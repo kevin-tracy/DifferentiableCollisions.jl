@@ -220,11 +220,15 @@ function iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-5,max_iters = 25,verbose = true,�
     #     @printf "---------------------------------------------------------------------\n"
     # end
 
+    Xhist=[deepcopy(X) for i = 1:1000]
+
     # initial rollout
     N = params.N
     for i = 1:N-1
         X[i+1] = discrete_dynamics(params,X[i],U[i],i)
     end
+
+    Xhist[1] .= X
 
     # @show [any(isnan.(x)) for x in X]
     # error()
@@ -242,6 +246,9 @@ function iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-5,max_iters = 25,verbose = true,�
     for iter = 1:max_iters
         ΔJ = backward_pass!(params,X,U,P,p,d,K,reg,μ,μx,ρ,λ)
         J, α = forward_pass!(params,X,U,K,d,ΔJ,Xn,Un,μ,μx,ρ,λ)
+
+        Xhist[iter + 1] .= X
+
         reg = update_reg(reg,reg_min,reg_max,α)
         dmax = calc_max_d(d)
         if verbose
@@ -284,7 +291,7 @@ function iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-5,max_iters = 25,verbose = true,�
             @show convio
             if convio <1e-4
                 @info "success!"
-                return nothing
+                return Xhist[1:(iter + 1)]
             end
 
             ρ *= ϕ
@@ -310,8 +317,8 @@ function vis_traj!(vis, name, X; R = 0.1, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))
         mc.setobject!(vis[name]["p"*string(i)], cyl, mc.MeshPhongMaterial(color=color))
     end
 end
-# vis = mc.Visualizer()
-# mc.open(vis)
+vis = mc.Visualizer()
+mc.open(vis)
 let
     nx = 6
     nu = 3
@@ -409,7 +416,7 @@ let
     p = [zeros(nx) for i = 1:N]      # cost to go linear term
     d = [zeros(nu) for i = 1:N-1]    # feedforward control
     K = [zeros(nu,nx) for i = 1:N-1] # feedback gain
-    iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-3,max_iters = 3000,verbose = true,ρ = 1e-2, ϕ = 10.0 )
+    Xhist = iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-1,max_iters = 3000,verbose = true,ρ = 1e-2, ϕ = 10.0 )
 
     sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.3)
     mc.setobject!(vis[:start], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(0.0,1.0,0,1.0)))
@@ -424,7 +431,7 @@ let
 
     # @show length(P_obs)
     for i = 1:length(P_obs)
-        dc.build_primitive!(vis, P_obs[i], Symbol("P"*string(i)); α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
+        dc.build_primitive!(vis, P_obs[i], Symbol("P"*string(i)); α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 0.3))
         dc.update_pose!(vis[Symbol("P"*string(i))],P_obs[i])
     end
 
@@ -438,8 +445,10 @@ let
     dc.build_primitive!(vis, P_vic, :vic; α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
 
     # # visualize trajectory
-    vis_traj!(vis, :traj, X; R = 0.1, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))
-    #
+    traj_alphas = range(.1,1,length = length(Xhist))
+    for i = 1:length(Xhist)
+        vis_traj!(vis, "traj"*string(i), Xhist[i]; R = 0.1, color = mc.RGBA(1.0, 0.0, 0.0, traj_alphas[i]))
+    end
     anim = mc.Animation(floor(Int,1/dt))
     for k = 1:N
         mc.atframe(anim, k) do

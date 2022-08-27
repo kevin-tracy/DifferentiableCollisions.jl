@@ -23,6 +23,7 @@ end
 
 function rot_part(J,q1,q2,q3,Δt)
     # ω = H'*L(q2)*q3/Δt
+
     (2.0/Δt)*G(q2)'*L(q1)*H*J*H'*L(q1)'*q2 + (2.0/Δt)*G(q2)'*T*R(q3)'*H*J*H'*L(q2)'*q3 #- Δt*.0001*ω
 end
 
@@ -88,10 +89,10 @@ function update_objects!(P, w, idx)
 end
 
 function contacts(P,idx)
-    [(dc.proximity(P[i],P[j])[1] - 1) for (i,j) in idx.interactions]
+    [(dc.proximity(P[i],P[j]; pdip_tol = 1e-12)[1] - 1) for (i,j) in idx.interactions]
 end
 function floor_contacts(P,P_floor,idx)
-    [(dc.proximity(P[i],P_floor; pdip_tol = 1e-10)[1] - 1) for i = 1:idx.N_bodies]
+    [(dc.proximity(P[i],P_floor; pdip_tol = 1e-12)[1] - 1) for i = 1:idx.N_bodies]
 end
 function linesearch(x,dx)
     α = min(0.99, minimum([dx[i]<0 ? -x[i]/dx[i] : Inf for i = 1:length(x)]))
@@ -123,6 +124,7 @@ function update_w(w,Δ,idx)
     wnew[idx.λ_floor] += Δ[idx.Δλ_floor]
     wnew
 end
+
 const τ_mod = Diagonal(kron(ones(2),[ones(3);0.5*ones(3)]))
 
 function contact_kkt(w₋, w, w₊, P, P_floor, inertias, masses, idx, κ)
@@ -138,14 +140,14 @@ function contact_kkt(w₋, w, w₊, P, P_floor, inertias, masses, idx, κ)
     update_objects!(P,w,idx)
     for k = 1:idx.N_interactions
         i,j = idx.interactions[k]
-        _,_,D_state = dc.proximity_jacobian(P[i],P[j]; pdip_tol = 1e-6)
+        _,_,D_state = dc.proximity_jacobian(P[i],P[j]; pdip_tol = 1e-12)
         D_α = reshape(D_state[4,:],1,14)
         E = h * τ_mod * (D_α*Gbar_2_body(w, idx.z[i], idx.z[j]))'*[λ[k]]
         DELs[i] += E[1:6]
         DELs[j] += E[7:12]
     end
     for i = 1:idx.N_bodies
-        _,_,D_state = dc.proximity_jacobian(P[i],P_floor; pdip_tol = 1e-6)
+        _,_,D_state = dc.proximity_jacobian(P[i],P_floor; pdip_tol = 1e-12)
         D_α = reshape(D_state[4,:],1,14)
         E = h * τ_mod * (D_α*Gbar_2_body(w, idx.z[i], idx.z[i]))'*[λ_floor[i]] # NOTE: second z for Gbar isn't used
         DELs[i] += E[1:6]
@@ -178,14 +180,14 @@ function contact_kkt_no_α(w₋, w, w₊, P, P_floor, inertias, masses, idx, κ)
     update_objects!(P,w,idx)
     for k = 1:idx.N_interactions
         i,j = idx.interactions[k]
-        _,_,D_state = dc.proximity_jacobian(P[i],P[j]; pdip_tol = 1e-6)
+        _,_,D_state = dc.proximity_jacobian(P[i],P[j]; pdip_tol = 1e-12)
         D_α = reshape(D_state[4,:],1,14)
         E = h * τ_mod * (D_α*Gbar_2_body(w, idx.z[i], idx.z[j]))'*[λ[k]]
         DELs[i] += E[1:6]
         DELs[j] += E[7:12]
     end
     for i = 1:idx.N_bodies
-        _,_,D_state = dc.proximity_jacobian(P[i],P_floor; pdip_tol = 1e-6)
+        _,_,D_state = dc.proximity_jacobian(P[i],P_floor; pdip_tol = 1e-12)
         D_α = reshape(D_state[4,:],1,14)
         E = h * τ_mod * (D_α*Gbar_2_body(w, idx.z[i], idx.z[i]))'*[λ_floor[i]] # NOTE: second z for Gbar isn't used
         DELs[i] += E[1:6]
@@ -215,7 +217,7 @@ function ncp_solve(w₋, w, P, P_floor, inertias, masses, idx)
     # @info "inside NCP solve"
     for main_iter = 1:30
         rhs1 = -contact_kkt(w₋, w, w₊, P, P_floor, inertias, masses, idx, 0)
-        if norm(rhs1,Inf)<1e-6
+        if norm(rhs1,Inf)<1e-12
             @info "success"
             return w₊
         end
@@ -235,7 +237,7 @@ function ncp_solve(w₋, w, P, P_floor, inertias, masses, idx)
             D[idx.α[k],idx.z[j]] = -D_α[1,idx.z[2]]
         end
         for i = 1:idx.N_bodies
-            _,_,D_α = dc.proximity_jacobian(P[i],P_floor; pdip_tol = 1e-6)
+            _,_,D_α = dc.proximity_jacobian(P[i],P_floor; pdip_tol = 1e-10)
             D_α = reshape(D_α[4,:],1,14)
             D[idx.α_floor[i],idx.z[i]] = -D_α[1,idx.z[1]]
         end
@@ -253,7 +255,8 @@ function ncp_solve(w₋, w, P, P_floor, inertias, masses, idx)
         μ = dot(w₊[idx.s], w₊[idx.λ])
         μa = dot(w₊[idx.s] + αa*Δa[idx.Δs], w₊[idx.λ] + αa*Δa[idx.Δλ])
         σ = min(0.99,max(0,μa/μ))^3
-        κ = max(min(σ*μ,1),1e-8)
+        # κ = max(min(σ*μ,1),1e-8)
+        κ = min(σ*μ,1)
 
         # centering step
         rhs2 = -contact_kkt(w₋, w, w₊, P, P_floor, inertias, masses, idx, κ)
@@ -287,7 +290,10 @@ function create_n_sided(N,d)
 end
 using JLD2
 @load "/Users/kevintracy/.julia/dev/DifferentialProximity/extras/polyhedra_plotting/polytopes.jld2"
-P = [dc.Cone(2.0, deg2rad(22)), dc.Sphere(1.0),dc.Capsule(.5,2.0),dc.Cylinder(.5,2.0),dc.Polygon(create_n_sided(8,0.6)...,0.13),dc.Polytope(SMatrix{14,3}(A1),SVector{14}(b1))]
+# P = [dc.Cylinder(.5,2.0), dc.Sphere(0.5)]
+P = [dc.Sphere(0.5),dc.Sphere(0.5),dc.Sphere(0.5),dc.Sphere(0.5),dc.Sphere(0.5)]
+
+# P = [dc.Cone(2.0, deg2rad(22)), dc.Sphere(1.0),dc.Capsule(.5,2.0),dc.Cylinder(.5,2.0),dc.Polygon(create_n_sided(8,0.6)...,0.13),dc.Polytope(SMatrix{14,3}(A1),SVector{14}(b1))]
 # dc.Cylinder(0.6,3.0), dc.Capsule(0.2,5.0), dc.Sphere(0.8),dc.Cone(2.0, deg2rad(22))]
 # P_floor, mass_floor, inertia_floor = create_rect_prism(len = 20,wid = 20,hei = 1.0)
 P_floor = dc.Polygon(create_n_sided(4,10.0)...,2.0)
@@ -305,6 +311,7 @@ inertias = [Diagonal(SA[1,2,3.0]) for i = 1:N_bodies]
 using Random
 Random.seed!(1234)
 rs = [SA[4*randn(), 4*randn(), 6 + 2*randn()] for i = 1:N_bodies]
+# rs = [SA[0,0,4.0] for i = 1:N_bodies]
 qs = [SA[1,0,0,0.0] for i = 1:N_bodies]
 # qs[3] = SA[cos(pi/4), 0,sin(pi/4),0]
 
@@ -314,7 +321,7 @@ vs =  [-rs[i] for i = 1:N_bodies]
 # vs[2] = SA[-0.0,0,0]
 
 
-ωs = [deg2rad.(5*(@SVector randn(3))) for i = 1:N_bodies]
+ωs = [deg2rad.(0*(@SVector randn(3))) for i = 1:N_bodies]
 # ωs[end] = SA[0,0,0.0]
 
 r2s = [(rs[i] + h*vs[i]) for i = 1:N_bodies]
@@ -340,6 +347,21 @@ dc.set_floor!(vis; x = 20, y = 20)
 for i = 1:N_bodies
     dc.build_primitive!(vis, P[i], Symbol("P"*string(i)); α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
 end
+
+# x1s = [SA[0,0,0.0] for i = 1:N]
+# x2s = [SA[0,0,0.0] for i = 1:N]
+# for i = 1:N
+#     update_objects!(P,W[i], idx)
+#     α1,x1 = dc.proximity(P_floor, P[1])
+#     α2,x2 = dc.proximity(P_floor, P[2])
+#
+#     x1s[i] = P[1].r + (x1 - P[1].r)/α1
+#     x2s[i] = P[2].r + (x2 - P[2].r)/α2
+# end
+#
+# sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.1)
+# mc.setobject!(vis[:p1], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(1.0,0,0,1.0)))
+# mc.setobject!(vis[:p2], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(1.0,0,0,1.0)))
 # dc.build_primitive!(vis,P_floor, :floor)
 # dc.update_pose!(vis[:floor],P_floor)
 # mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
@@ -354,6 +376,8 @@ for k = 1:length(W)
             sym = Symbol("P"*string(i))
             mc.settransform!(vis[sym], mc.Translation(W[k][idx.z[i][1:3]]) ∘ mc.LinearMap(dc.dcm_from_q(W[k][idx.z[i][SA[4,5,6,7]]])))
         end
+        # mc.settransform!(vis[:p1], mc.Translation(x1s[k]))
+        # mc.settransform!(vis[:p2], mc.Translation(x2s[k]))
     end
 end
 mc.setanimation!(vis, anim)

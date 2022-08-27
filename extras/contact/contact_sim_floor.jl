@@ -150,7 +150,7 @@ function ncp_solve(z₋,z,J1,m1,h,P1)
     @printf "--------------------------------------------------------------------------\n"
     for i = 1:30
         rhs1 = -contact_kkt(z₋,z,z₊,J1,m1,P1,h,0)
-        if norm(rhs1)<1e-6
+        if norm(rhs1,Inf)<1e-10
             @info "success"
             return z₊
         end

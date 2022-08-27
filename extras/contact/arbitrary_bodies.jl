@@ -75,16 +75,7 @@ function update_objects!(P, w, idx)
 end
 
 function contacts(P,idx)
-    # returns α - 1 for all contacts
     [(dc.proximity(P[i],P[j])[1] - 1) for (i,j) in idx.interactions]
-    # as = zeros(idx.N_interactions)
-    # for k = 1:idx.N_interactions
-    #     i,j = idx.interactions[k]
-    #     @show P[i]
-    #     @show P[j]
-    #     as[i] = dc.proximity(P[i],P[j])[1] - 1
-    # end
-    # as
 end
 function linesearch(x,dx)
     α = min(0.99, minimum([dx[i]<0 ? -x[i]/dx[i] : Inf for i = 1:length(x)]))
@@ -121,7 +112,7 @@ function contact_kkt(w₋, w, w₊, P, inertias, masses, idx, κ)
     λ = w₊[idx.λ]
 
     # DEL stuff for each body
-    DELs = [single_DEL(w₋[idx.z[i]],w[idx.z[i]],w₊[idx.z[i]],inertias[i],masses[i],h) for i = 1:length(P)]
+    DELs = [single_DEL(w₋[idx.z[i]],w[idx.z[i]],w₊[idx.z[i]],inertias[i],masses[i],h) for i = 1:idx.N_bodies]
 
     # now we add the jacobian functions stuff at middle time step
     update_objects!(P,w,idx)

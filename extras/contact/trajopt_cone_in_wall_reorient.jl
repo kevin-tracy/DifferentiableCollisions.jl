@@ -156,7 +156,7 @@ function trajectory_AL_cost(params,X,U,μ,μx,ρ,λ)
     J += dot(λ,hxv) + 0.5*ρ*hxv'*hxv
     return J
 end
-function forward_pass!(params,X,U,K,d,ΔJ,Xn,Un,μ,μx,ρ,λ; max_linesearch_iters = 20)
+function forward_pass!(params,X,U,K,d,ΔJ,Xn,Un,μ,μx,ρ,λ; max_linesearch_iters = 10)
 
     N = params.N
     α = 1.0
@@ -354,7 +354,7 @@ let
     nu = 6
     N = 60
     dt = 0.1
-    x0 = [-4,-7,7,0,0,0.0,0,0,0,0,0,0]
+    x0 = [-4,-7,9,0,0,0.0,0,0,0,0,0,0]
     xg = [-4.5,7,3,0,0,0.0,.0,.0,.0,0,0,0]
     Xref = linear_interp(dt,x0,xg,N)
     Uref = [zeros(nu) for i = 1:N]
@@ -427,7 +427,7 @@ let
 
 
     X = [deepcopy(x0) for i = 1:N]
-    U = [.01*randn(nu) for i = 1:N-1]
+    U = [.1*randn(nu) for i = 1:N-1]
 
     Xn = deepcopy(X)
     Un = deepcopy(U)
@@ -467,7 +467,7 @@ let
 
     # # visualize trajectory
     traj_alphas = range(.1,1,length = length(Xhist))
-    for i = length(Xhist)
+    for i = 1:length(Xhist)
         vis_traj!(vis, "traj"*string(i), Xhist[i]; R = 0.1, color = mc.RGBA(1.0, 0.0, 0.0, traj_alphas[i]))
     end
     anim = mc.Animation(floor(Int,1/dt))

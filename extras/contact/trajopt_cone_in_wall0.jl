@@ -221,13 +221,13 @@ function ineq_con_x(p,x)
     vcat(contacts...)
 end
 function ineq_con_x_jac(p,x)
-    FD2.finite_difference_jacobian(_x -> ineq_con_x(p,_x),x)
-    # p.P_vic.r = SVector{3}(x[1:3])
-    # p.P_vic.p = SVector{3}(x[7:9])
-    # # J = [-reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[1])[3][4,1:3],1,3) zeros(1,3)]
-    # contact_J = [ [-reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[i])[3][4,1:3],1,3) zeros(1,3) -reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[i])[3][4,4:6],1,3) zeros(1,3)] for i = 1:length(p.P_obs)]
+    # FD2.finite_difference_jacobian(_x -> ineq_con_x(p,_x),x)
+    p.P_vic.r = SVector{3}(x[1:3])
+    p.P_vic.p = SVector{3}(x[7:9])
+    # J = [-reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[1])[3][4,1:3],1,3) zeros(1,3)]
+    contact_J = [ [-reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[i])[3][4,1:3],1,3) zeros(1,3) -reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[i])[3][4,4:6],1,3) zeros(1,3)] for i = 1:length(p.P_obs)]
     # # @show size(J)
-    # vcat(contact_J...)
+    vcat(contact_J...)
 end
 function eval_mask(μv,huv)
     # active set mask
@@ -355,18 +355,19 @@ let
     N = 60
     dt = 0.1
     x0 = [-4,-7,7,0,0,0.0,0,0,0,0,0,0]
-    xg = [-4.5,7,3,0,0,0.0,.1,.2,.3,0,0,0]
+    xg = [-4.5,7,3,0,0,0.0,.0,.0,.0,0,0,0]
     Xref = linear_interp(dt,x0,xg,N)
     Uref = [zeros(nu) for i = 1:N]
     Q = Diagonal(ones(nx))
     Qf = Diagonal(ones(nx))
     R = Diagonal(ones(nu))
+    R = Diagonal([ones(3);100*ones(3)])
 
-    # P_vic = dc.ConeMRP(1.0, deg2rad(22))
-    P_vic = dc.SphereMRP(0.5)
-    # mass,inertia = dc.mass_properties(P_vic)
-    mass = 1.0
-    inertia = Diagonal(ones(3))
+    P_vic = dc.ConeMRP(2.0, deg2rad(22))
+    # P_vic = dc.SphereMRP(0.5)
+    mass,inertia = dc.mass_properties(P_vic)
+    # mass = 1.0
+    # inertia = Diagonal(ones(3))
     # P_obs = [dc.Sphere(1.6), dc.Capsule(1.0,3.0), dc.Cylinder(0.8,4.0), dc.Cone()]
     function create_n_sided(N,d)
         ns = [ [cos(θ);sin(θ)] for θ = 0:(2*π/N):(2*π*(N-1)/N)]
@@ -426,7 +427,7 @@ let
 
 
     X = [deepcopy(x0) for i = 1:N]
-    U = [.0001*randn(nu) for i = 1:N-1]
+    U = [.01*randn(nu) for i = 1:N-1]
 
     Xn = deepcopy(X)
     Un = deepcopy(U)
@@ -436,7 +437,7 @@ let
     p = [zeros(nx) for i = 1:N]      # cost to go linear term
     d = [zeros(nu) for i = 1:N-1]    # feedforward control
     K = [zeros(nu,nx) for i = 1:N-1] # feedback gain
-    Xhist = iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-1,max_iters = 3000,verbose = true,ρ = 1e-2, ϕ = 10.0 )
+    Xhist = iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-1,max_iters = 3000,verbose = true,ρ = 1e0, ϕ = 10.0 )
 
     sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.3)
     mc.setobject!(vis[:start], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(0.0,1.0,0,1.0)))
@@ -466,13 +467,13 @@ let
 
     # # visualize trajectory
     traj_alphas = range(.1,1,length = length(Xhist))
-    for i = 1:length(Xhist)
+    for i = length(Xhist)
         vis_traj!(vis, "traj"*string(i), Xhist[i]; R = 0.1, color = mc.RGBA(1.0, 0.0, 0.0, traj_alphas[i]))
     end
     anim = mc.Animation(floor(Int,1/dt))
     for k = 1:N
         mc.atframe(anim, k) do
-            mc.settransform!(vis[:vic], mc.Translation(X[k][1:3]) ∘ mc.LinearMap(dc.dcm_from_mrp(X[k][7:9])))
+            mc.settransform!(vis[:vic], mc.Translation(X[k][1:3]) ∘ mc.LinearMap(dc.dcm_from_mrp(X[k][SA[7,8,9]])))
             # dc.update_pose!(vis[:vic], P_vic)
         end
     end

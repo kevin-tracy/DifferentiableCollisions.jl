@@ -24,7 +24,7 @@ function create_rect_prism(;len = 20.0, wid = 20.0, hei = 2.0)
 
     inertia = (mass/12)*Diagonal(SA[wid^2 + hei^2, len^2 + hei^2, len^2 + wid^2])
 
-    return dc.Polytope(A,b), mass, inertia
+    return dc.PolytopeMRP(A,b), mass, inertia
 end
 
 # vis = mc.Visualizer()

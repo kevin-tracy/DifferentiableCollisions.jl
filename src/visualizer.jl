@@ -3,7 +3,7 @@ function update_pose!(vis,P::AbstractPrimitive)
     mc.settransform!(vis, mc.Translation(P.r) ∘ mc.LinearMap(dcm_from_q(P.q)))
 end
 function update_pose!(vis,P::AbstractPrimitiveMRP)
-    mc.settransform!(vis, mc.Translation(P.r) ∘ mc.LinearMap(dcm_from_p(P.p)))
+    mc.settransform!(vis, mc.Translation(P.r) ∘ mc.LinearMap(dcm_from_mrp(P.p)))
 end
 
 function build_primitive!(vis,P::Union{Polytope{n,n3,T},PolytopeMRP{n,n3,T}},poly_name::Symbol;color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {n,n3,T}

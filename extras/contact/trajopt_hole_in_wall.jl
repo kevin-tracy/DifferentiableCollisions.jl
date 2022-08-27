@@ -310,15 +310,15 @@ function vis_traj!(vis, name, X; R = 0.1, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))
         mc.setobject!(vis[name]["p"*string(i)], cyl, mc.MeshPhongMaterial(color=color))
     end
 end
-vis = mc.Visualizer()
-mc.open(vis)
+# vis = mc.Visualizer()
+# mc.open(vis)
 let
     nx = 6
     nu = 3
     N = 60
     dt = 0.1
-    x0 = [-12,-12,4,0,0,0.0]
-    xg = [12,12,4,0,0,0.0]
+    x0 = [-1,-7,5,0,0,0.0]
+    xg = [-1.5,7,5,0,0,0.0]
     Xref = linear_interp(dt,x0,xg,N)
     Uref = [zeros(nu) for i = 1:N]
     Q = Diagonal(ones(nx))
@@ -337,29 +337,25 @@ let
         b = d*ones(N)
         return SMatrix{N,2}(A), SVector{N}(b)
     end
-    @load "/Users/kevintracy/.julia/dev/DifferentialProximity/extras/polyhedra_plotting/polytopes.jld2"
-    P_obs = [dc.Cylinder(0.6,3.0), dc.Capsule(0.2,5.0), dc.Sphere(0.8),
-         dc.Cone(2.0, deg2rad(22)),dc.Polytope(SMatrix{8,3}(A2),SVector{8}(b2)),dc.Polygon(create_n_sided(5,0.6)...,0.2),
-         dc.Cylinder(1.1,2.3), dc.Capsule(0.8,1.0), dc.Sphere(0.5),
-              dc.Cone(3.0, deg2rad(18)),dc.Polytope(SMatrix{14,3}(A1),SVector{14}(b1)),dc.Polygon(create_n_sided(8,0.8)...,0.15),
-              dc.Cylinder(0.6,3.0), dc.Capsule(0.2,5.0), dc.Sphere(0.8),
-                   dc.Cone(2.0, deg2rad(22)),dc.Polytope(SMatrix{8,3}(A2),SVector{8}(b2)),dc.Polygon(create_n_sided(5,0.6)...,0.2),
-                   dc.Cylinder(1.1,2.3), dc.Capsule(0.8,1.0), dc.Sphere(0.5),
-                        dc.Cone(3.0, deg2rad(18)),dc.Polytope(SMatrix{14,3}(A1),SVector{14}(b1)),dc.Polygon(create_n_sided(8,0.8)...,0.15), dc.Cone(3.0, deg2rad(18))]
+    # @load "/Users/kevintracy/.julia/dev/DifferentialProximity/extras/polyhedra_plotting/polytopes.jld2"
+    # P_obs = [dc.Cylinder(0.6,3.0), dc.Capsule(0.2,5.0), dc.Sphere(0.8),
+         # dc.Cone(2.0, deg2rad(22)),dc.Polytope(SMatrix{8,3}(A2),SVector{8}(b2)),dc.Polygon(create_n_sided(5,0.6)...,0.2),
+         # dc.Cylinder(1.1,2.3), dc.Capsule(0.8,1.0), dc.Sphere(0.5),
+              # dc.Cone(3.0, deg2rad(18)),dc.Polytope(SMatrix{14,3}(A1),SVector{14}(b1)),dc.Polygon(create_n_sided(8,0.8)...,0.15),
+              # dc.Cylinder(0.6,3.0), dc.Capsule(0.2,5.0), dc.Sphere(0.8),
+                   # dc.Cone(2.0, deg2rad(22)),dc.Polytope(SMatrix{8,3}(A2),SVector{8}(b2)),dc.Polygon(create_n_sided(5,0.6)...,0.2),
+                   # dc.Cylinder(1.1,2.3), dc.Capsule(0.8,1.0), dc.Sphere(0.5),
+                        # dc.Cone(3.0, deg2rad(18)),dc.Polytope(SMatrix{14,3}(A1),SVector{14}(b1)),dc.Polygon(create_n_sided(8,0.8)...,0.15), dc.Cone(3.0, deg2rad(18))]
     # P_obs[2].r = SA[0,3.0,0.0]
     # P_obs = [P_obs...,P_obs...]
-    @show length(P_obs)
-    gr = range(-6,6,length = 5)
-    @show length(gr)^2
-    grid_xy = vec([SA[i,j] for i = gr, j = gr])
-    for i = 1:length(P_obs)
-    # for i = 1:20
-        @show grid_xy[i]
-        # P_obs[i].r = SA[rand(-5:.01:5),rand(-5:.01:5), 4 + randn()]
-        P_obs[i].r = [grid_xy[i];SA[4 + 1.0*randn()]]
-        @show P_obs[i].r
-        P_obs[i].q = normalize((@SVector randn(4)))
-    end
+    P_obs = [create_rect_prism(;len = 10.0, wid = 10.0, hei = 1.0)[1],
+             create_rect_prism(;len = 10.0, wid = 10.0, hei = 1.0)[1]]
+
+    P_obs[1].r = SA[-6,0,5.0]
+    P_obs[1].q = SA[cos(pi/4),sin(pi/4),0,0]
+    P_obs[2].r = SA[6,0,5.0]
+    P_obs[2].q = SA[cos(pi/4),sin(pi/4),0,0]
+
     # error()
     u_min = -20*ones(nu)
     u_max =  20*ones(nu)
@@ -409,9 +405,9 @@ let
     K = [zeros(nu,nx) for i = 1:N-1] # feedback gain
     iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-3,max_iters = 3000,verbose = true,ρ = 1e3, ϕ = 10.0 )
 
-    sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.1)
+    sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.3)
     mc.setobject!(vis[:start], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(0.0,1.0,0,1.0)))
-    mc.setobject!(vis[:vic], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(0.0,0.0,1.0,1.0)))
+    # mc.setobject!(vis[:vic], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(0.0,0.0,1.0,1.0)))
     mc.setobject!(vis[:stop], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(1.0,0,0,1.0)))
     mc.settransform!(vis[:start], mc.Translation(x0[1:3]))
     mc.settransform!(vis[:stop], mc.Translation(xg[1:3]))

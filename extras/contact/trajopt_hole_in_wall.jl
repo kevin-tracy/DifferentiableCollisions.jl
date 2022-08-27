@@ -317,8 +317,8 @@ let
     nu = 3
     N = 60
     dt = 0.1
-    x0 = [-1,-7,5,0,0,0.0]
-    xg = [-1.5,7,5,0,0,0.0]
+    x0 = [-4,-7,7,0,0,0.0]
+    xg = [-4.5,7,3,0,0,0.0]
     Xref = linear_interp(dt,x0,xg,N)
     Uref = [zeros(nu) for i = 1:N]
     Q = Diagonal(ones(nx))
@@ -349,12 +349,18 @@ let
     # P_obs[2].r = SA[0,3.0,0.0]
     # P_obs = [P_obs...,P_obs...]
     P_obs = [create_rect_prism(;len = 10.0, wid = 10.0, hei = 1.0)[1],
-             create_rect_prism(;len = 10.0, wid = 10.0, hei = 1.0)[1]]
+             create_rect_prism(;len = 10.0, wid = 10.0, hei = 1.0)[1],
+             create_rect_prism(;len = 4.1, wid = 4.1, hei = 1.1)[1],
+             create_rect_prism(;len = 4.1, wid = 4.1, hei = 1.1)[1]]
 
     P_obs[1].r = SA[-6,0,5.0]
     P_obs[1].q = SA[cos(pi/4),sin(pi/4),0,0]
     P_obs[2].r = SA[6,0,5.0]
     P_obs[2].q = SA[cos(pi/4),sin(pi/4),0,0]
+    P_obs[3].r = SA[0,0,2.0]
+    P_obs[3].q = SA[cos(pi/4),sin(pi/4),0,0]
+    P_obs[4].r = SA[0,0,8.0]
+    P_obs[4].q = SA[cos(pi/4),sin(pi/4),0,0]
 
     # error()
     u_min = -20*ones(nu)
@@ -403,7 +409,7 @@ let
     p = [zeros(nx) for i = 1:N]      # cost to go linear term
     d = [zeros(nu) for i = 1:N-1]    # feedforward control
     K = [zeros(nu,nx) for i = 1:N-1] # feedback gain
-    iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-3,max_iters = 3000,verbose = true,ρ = 1e3, ϕ = 10.0 )
+    iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-3,max_iters = 3000,verbose = true,ρ = 1e-2, ϕ = 10.0 )
 
     sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.3)
     mc.setobject!(vis[:start], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(0.0,1.0,0,1.0)))

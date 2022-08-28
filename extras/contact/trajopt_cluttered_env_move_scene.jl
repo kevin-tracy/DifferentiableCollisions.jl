@@ -405,18 +405,19 @@ let
     iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-3,max_iters = 3000,verbose = true,ρ = 1e3, ϕ = 10.0 )
 
     sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.1)
-    mc.setobject!(vis[:start], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(0.0,1.0,0,1.0)))
-    mc.setobject!(vis[:vic], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(0.0,0.0,1.0,1.0)))
-    mc.setobject!(vis[:stop], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(1.0,0,0,1.0)))
-    mc.settransform!(vis[:start], mc.Translation(x0[1:3]))
-    mc.settransform!(vis[:stop], mc.Translation(xg[1:3]))
-    mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
-    mc.setvisible!(vis["/Grid"],false)
-    dc.set_floor!(vis; x = 20, y = 20)
+    # mc.setobject!(vis[:start], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(0.0,1.0,0,1.0)))
+    # mc.setobject!(vis[:vic], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(0.0,0.0,1.0,1.0)))
+    # mc.setobject!(vis[:stop], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(1.0,0,0,1.0)))
+    # mc.settransform!(vis[:start], mc.Translation(x0[1:3]))
+    # mc.settransform!(vis[:stop], mc.Translation(xg[1:3]))
+    # mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
+    # mc.setvisible!(vis["/Grid"],false)
+    # dc.set_floor!(vis; x = 20, y = 20)
 
 
     # @show length(P_obs)
     for i = 1:length(P_obs)
+        name = "scene/P" * string(i)
         dc.build_primitive!(vis, P_obs[i], Symbol("P"*string(i)); α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
         dc.update_pose!(vis[Symbol("P"*string(i))],P_obs[i])
     end

@@ -14,6 +14,7 @@ using JLD2
 import Random
 using Convex
 using ECOS
+using Colors
 
 function ϕ(x,Pvic,P1)
     Pvic.r = SA[x[1],x[2],x[3]]
@@ -41,7 +42,7 @@ function ϕ̇(x,u,Ad,Bd,dt,Pvic,P1)
 end
 
 function CBF_convex(x,u_nom,Ad,Bd,dt,Pvic,P1)
-    λ = -2
+    λ = -.5
     u = Variable(3)
     x2 = Ad*x + Bd*u
     xdot = (x2 - x)/dt
@@ -83,20 +84,22 @@ let
     phi = zeros(N-1)
     phidot = zeros(N-1)
 
-    P1 = dc.Cone(3.0,rad2deg(22))
-    P1.r = SA[4,4,0.8]
+    P1 = dc.Cone(3.0,deg2rad(22))
+    P1.r = SA[0,0,0.8]
     using Random
-    Random.seed!(1)
+    Random.seed!(5)
     P1.q = normalize((@SVector randn(4)))
     # P2 = dc.Sphere(1)
     # P2.r = SA[7,7,0.0]
-    Pvic = dc.Sphere(0.5)
+    # Pvic = dc.Sphere(0.5)
+    Pvic = dc.Cylinder(0.5,1.0)
 
-    X[1] = [12,9,1.0,0.1,0.1,0]
+    X[1] = [8,5,1.0,0.1,0.1,0]
+    xg = [-4,-4,0]
     kp = .10
     kd = .5
     for i = 1:N-1
-        U[i] = -kp*X[i][1:3] - kd*X[i][4:6]
+        U[i] = -kp*(X[i][1:3]-xg) - kd*X[i][4:6]
         U[i] = CBF_convex(X[i],U[i],Ad,Bd,dt,Pvic,P1)
 #         U[i] = CBF_tinyqp(X[i],U[i],Ad,Bd,dt)
         X[i+1] = Ad*X[i] + Bd*U[i]
@@ -107,9 +110,12 @@ let
     vis = mc.Visualizer()
     mc.open(vis)
 
-    dc.build_primitive!(vis, P1, :P1; α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
+    c1 = [245, 155, 66]/255
+    c2 = [2,190,207]/255
+
+    dc.build_primitive!(vis, P1, :P1; α = 1.0,color = mc.RGBA(c1..., 1.0))
     # dc.build_primitive!(vis, P2, :P2; α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
-    dc.build_primitive!(vis, Pvic, :Pvic; α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
+    dc.build_primitive!(vis, Pvic, :Pvic; α = 1.0,color = mc.RGBA(c2..., 1.0))
     dc.update_pose!(vis[:P1],P1)
     # dc.update_pose!(vis[:P2],P2)
 
@@ -118,7 +124,7 @@ let
         # sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.3)
         # mc.setobject!(vis[:vic], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(1.0,0,0,1.0)))
     # end
-    mc.setprop!(vis["/Lights/AmbientLight/<object>"], "intensity", 1.3)
+    mc.setprop!(vis["/Lights/AmbientLight/<object>"], "intensity", 0.9)
     mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
     mc.setvisible!(vis["/Grid"],false)
     dc.set_floor!(vis; x = 20, y = 20)

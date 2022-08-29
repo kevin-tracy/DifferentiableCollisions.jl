@@ -167,7 +167,7 @@ function axes_pair_to_quaternion(n1, n2)
 	q /= norm(q)
 	return dcm_from_q(SVector{4}(q))
 end
-function set_floor!(vis;
+function set_floor!(vis;darkmode = true,
 	    x=20.0,
 	    y=20.0,
 	    z=0.1,
@@ -175,9 +175,14 @@ function set_floor!(vis;
 		normal=[0,0,1.0],
 	    color=mc.RGBA(0.5,0.5,0.5,1.0),
 	    tilepermeter=0.5,
-	    imagename="/Users/kevintracy/.julia/dev/DifferentialProximity/extras/polyhedra_plotting/tile.png",
 	    axis::Bool=false,
 	    grid::Bool=false)
+
+	if darkmode
+		imagename = joinpath(dirname(@__FILE__),"tile_dark.jpeg")
+	else
+		imagename = joinpath(dirname(@__FILE__),"tile.png")
+	end
     image = mc.PngImage(imagename)
     repeat = Int.(ceil.(tilepermeter * [x, y]))
     texture = mc.Texture(image=image, wrap=(1,1), repeat=(repeat[1],repeat[2]))

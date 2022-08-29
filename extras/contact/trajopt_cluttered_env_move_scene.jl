@@ -213,7 +213,7 @@ function eval_mask(μv,huv)
     mask
 end
 
-function iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-5,max_iters = 25,verbose = true,ρ=1,ϕ=10)
+function iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-5,max_iters = 25,verbose = true,ρ=1e0,ϕ=10)
 
     # # inital logging stuff
     # if verbose
@@ -348,11 +348,12 @@ let
                    dc.Cylinder(1.1,2.3), dc.Capsule(0.8,1.0), dc.Sphere(0.5),
                         dc.Cone(3.0, deg2rad(18)),dc.Polytope(SMatrix{14,3}(A1),SVector{14}(b1)),dc.Polygon(create_n_sided(8,0.8)...,0.15), dc.Cone(3.0, deg2rad(18))]
     using Random
+    # @show length(P_obs)
     Random.seed!(1234)
     gr = range(-6,6,length = 5)
     grid_xy = vec([SA[i,j] for i = gr, j = gr])
     for i = 1:length(P_obs)
-        P_obs[i].r = [grid_xy[i];SA[4 + 1.0*randn()]]
+        P_obs[i].r = [grid_xy[i]; 4 + 1.0*randn()]
         P_obs[i].q = normalize((@SVector randn(4)))
     end
     # error()
@@ -402,74 +403,48 @@ let
     p = [zeros(nx) for i = 1:N]      # cost to go linear term
     d = [zeros(nu) for i = 1:N-1]    # feedforward control
     K = [zeros(nu,nx) for i = 1:N-1] # feedback gain
-    iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-3,max_iters = 3000,verbose = true,ρ = 1e3, ϕ = 10.0 )
+    iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-3,max_iters = 3000,verbose = true,ρ = 1e0, ϕ = 10.0 )
 
     sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.1)
-    # mc.setobject!(vis[:start], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(0.0,1.0,0,1.0)))
-    # mc.setobject!(vis[:vic], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(0.0,0.0,1.0,1.0)))
-    # mc.setobject!(vis[:stop], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(1.0,0,0,1.0)))
-    # mc.settransform!(vis[:start], mc.Translation(x0[1:3]))
-    # mc.settransform!(vis[:stop], mc.Translation(xg[1:3]))
-    # mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
-    # mc.setvisible!(vis["/Grid"],false)
-    # dc.set_floor!(vis; x = 20, y = 20)
+    mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
+    mc.setvisible!(vis["/Grid"],false)
+    dc.set_floor!(vis; x = 20, y = 20)
 
 
     # @show length(P_obs)
     for i = 1:length(P_obs)
-        name = "scene/P" * string(i)
-        dc.build_primitive!(vis, P_obs[i], Symbol("P"*string(i)); α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
-        dc.update_pose!(vis[Symbol("P"*string(i))],P_obs[i])
+        name = "P" * string(i)
+        dc.build_primitive!(vis, P_obs[i], name; α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 0.8))
+        dc.update_pose!(vis[name],P_obs[i])
     end
-
-    # for i = 1:length(grid_xy)
-    # for i = 1:length(P_obs)
-    #     sph_p1 = mc.HyperSphere(mc.Point(grid_xy[i]...,4.0), 0.3)
-    #     mc.setobject!(vis["s"*string(i)], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(1.0,0,0,1.0)))
-    # end
 
     # build actual vehicle
     dc.build_primitive!(vis, P_vic, :vic; α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
 
     # # visualize trajectory
     vis_traj!(vis, :traj, X; R = 0.1, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))
-    #
     anim = mc.Animation(floor(Int,1/dt))
-    # for k = 1:N
-    #     mc.atframe(anim, vis, Int(k)) do frame
-    #
-    #         target_translation = mc.Translation(X[k][1:3])
-    #         target_rotation = mc.LinearMap(diagm(ones(3)))
-    #         camera_translation = mc.Translation(X[k][1:3] + -[5,5,5.0])
-    #         camera_rotation = mc.LinearMap(diagm(ones(3)))
-    #         camera_transformation = mc.compose(mc.compose(mc.compose(
-    #             target_translation,
-    #             target_rotation),
-    #             camera_translation),
-    #             camera_rotation)
-    #         mc.settransform!(frame["/Cameras/default"], camera_transformation)
-    #     end
-    # end
+    mc.setprop!(vis["/Cameras/default/rotated/<object>"], "zoom", 1.0)
+
+
+    cam_ps_spl = [
+    SA[5,0,3.0], SA[5,5,3.0], SA[-3,5,0.0]
+    ]
+    cam_spl = cubic_spline_interpolation(range(1,N,length = 3), cam_ps_spl)
+    cam_rad = 5.0
+    cam_ps = [cam_rad*normalize(cam_spl(i)) for i = 1:N]
+
+
     for k = 1:N
         mc.atframe(anim, k) do
-            # mc.settransform!(vis[:vic], mc.Translation(X[k][1:3]))
-            mc.settransform!(vis["/"],mc.Translation(-X[k][1:3]))
+             mc.settransform!(vis["/Cameras/default"], mc.Translation(cam_ps[k]))
+            for i = 1:length(P_obs)
+                name = "P" * string(i)
+                mc.settransform!(vis[name], mc.Translation(P_obs[i].r - X[k][1:3]) ∘ mc.LinearMap(dc.dcm_from_q(P_obs[i].q)))
 
-            # target_translation = mc.Translation(X[k][1:3])
-            # target_rotation = mc.LinearMap(diagm(ones(3)))
-            # camera_translation = mc.Translation(X[k][1:3] + -[5,5,5.0])
-            # camera_rotation = mc.LinearMap(diagm(ones(3)))
-            # camera_transformation = mc.compose(mc.compose(mc.compose(
-            #     target_translation,
-            #     target_rotation),
-            #     camera_translation),
-            #     camera_rotation)
-            # mc.settransform!(vis["/Cameras/default"], camera_transformation)
-            # mc.settransform!(vis["/Cameras/default"], mc.LinearMap(exp(skew((pi*.99)*[1,0,0]))) ∘ mc.Translation([5,5,5.0]))
-            # dc.update_pose!(vis[:vic], P_vic)
-            # mc.settransform!(vis["/Cameras/default"],mc.Translation(X[k][1:3]))
-            # mc.settransform!(vis["/Cameras/default"],mc.Translation(X[k][1:3]) ∘ mc.LinearMap(diagm(ones(3))))
-            # mc.settransform!(vis["/Cameras/default/rotated/<object>"],mc.Translation(X[k][1:3]))
+            end
+            mc.settransform!(vis[:floor], mc.Translation(-X[k][1:3]))
+            mc.settransform!(vis[:traj], mc.Translation(-X[k][1:3]))
         end
     end
     mc.setanimation!(vis, anim)

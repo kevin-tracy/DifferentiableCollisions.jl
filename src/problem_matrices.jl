@@ -148,7 +148,7 @@ end
     n_Q_b = dcm_from_q(q)
     cylinder_problem_matrices(cylinder.R,cylinder.L,r,n_Q_b)
 end
-@inline function problem_matrices(cylinder::Cylinder{T},r::SVector{3,T1},p::SVector{3,T2}) where {T,T1,T2}
+@inline function problem_matrices(cylinder::CylinderMRP{T},r::SVector{3,T1},p::SVector{3,T2}) where {T,T1,T2}
     n_Q_b = dcm_from_mrp(p)
     cylinder_problem_matrices(cylinder.R,cylinder.L,r,n_Q_b)
 end

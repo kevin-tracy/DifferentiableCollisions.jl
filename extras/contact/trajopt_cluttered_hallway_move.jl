@@ -311,6 +311,11 @@ function vis_traj!(vis, name, X; R = 0.1, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))
         cyl = mc.Cylinder(mc.Point(a...), mc.Point(b...), R)
         mc.setobject!(vis[name]["p"*string(i)], cyl, mc.MeshPhongMaterial(color=color))
     end
+    for i = 1:length(X)
+        a = X[i][1:3]
+        sph_p1 = mc.HyperSphere(mc.Point(a...), R)
+        mc.setobject!(vis[name]["s"*string(i)], sph_p1, mc.MeshPhongMaterial(color = color))
+    end
 end
 function create_rect_prism_quat(;len = 20.0, wid = 20.0, hei = 2.0)
 # len = 20.0
@@ -354,8 +359,9 @@ let
     obstacle = zeros(3)
     obstacle_R = 2.0
 
-    # P_vic = dc.Cone(2.0, deg2rad(22))
-    P_vic = dc.Sphere(0.25)
+    P_vic = dc.Cone(0.5, deg2rad(22))
+    P_vic.q = SA[cos(pi/2),0,sin(pi/2),0]
+    # P_vic = dc.Sphere(0.25)
 
     # P_obs = [dc.Sphere(1.6), dc.Capsule(1.0,3.0), dc.Cylinder(0.8,4.0), dc.Cone()]
     function create_n_sided(N,d)
@@ -461,31 +467,33 @@ let
     end
 
     # build actual vehicle
-    dc.build_primitive!(vis, P_vic, :vic; α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
+    dc.build_primitive!(vis, P_vic, :vic; α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 0.2))
     # dc.build_primitive!(vis, P_vic, :vic; α = 1.0,color = LCHab(70,70,720))
     # # visualize trajectory
-    vis_traj!(vis, :traj, X; R = 0.1, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))
+    vis_traj!(vis, :traj, X; R = 0.05, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))
     anim = mc.Animation(floor(Int,1/dt))
     mc.setprop!(vis["/Lights/AmbientLight/<object>"], "intensity", 0.6)
     mc.setprop!(vis["/Cameras/default/rotated/<object>"], "zoom", 1.0)
 
 
-    for i = 1:length(P_obs)
-        name = "P" * string(i)
-        mc.settransform!(vis[name], mc.Translation(P_obs[i].r) ∘ mc.LinearMap(dc.dcm_from_q(P_obs[i].q)))
-    end
+    # for i = 1:length(P_obs)
+    #     name = "P" * string(i)
+        # mc.settransform!(vis[name], mc.Translation(P_obs[i].r) ∘ mc.LinearMap(dc.dcm_from_q(P_obs[i].q)))
+    # end
+    mc.settransform!(vis[:vic], mc.LinearMap(dc.dcm_from_q(P_vic.q)))
+
 
     for k = 1:N
         mc.atframe(anim, k) do
-             # mc.settransform!(vis["/Cameras/default"], mc.Translation(cam_ps[k]))
-            # for i = 1:length(P_obs)
-            #     name = "P" * string(i)
-            #     mc.settransform!(vis[name], mc.Translation(P_obs[i].r - X[k][1:3]) ∘ mc.LinearMap(dc.dcm_from_q(P_obs[i].q)))
+            mc.settransform!(vis["/Cameras/default"], mc.Translation([-4.0,0,-1.0]))
+            for i = 1:length(P_obs)
+                name = "P" * string(i)
+                mc.settransform!(vis[name], mc.Translation(P_obs[i].r - X[k][1:3]) ∘ mc.LinearMap(dc.dcm_from_q(P_obs[i].q)))
             #
-            # end
-            # mc.settransform!(vis[:floor], mc.Translation(-X[k][1:3]))
-            # mc.settransform!(vis[:traj], mc.Translation(-X[k][1:3]))
-            mc.settransform!(vis[:vic], mc.Translation(X[k][1:3]))
+            end
+            mc.settransform!(vis[:floor], mc.Translation(-X[k][1:3]))
+            mc.settransform!(vis[:traj], mc.Translation(-X[k][1:3]))
+            # mc.settransform!(vis[:vic], mc.Translation(X[k][1:3]))
         end
     end
     mc.setanimation!(vis, anim)

@@ -374,10 +374,10 @@ let
     #                dc.Cylinder(1.1,2.3), dc.Capsule(0.8,1.0), dc.Sphere(0.5),
     #                      dc.Cone(3.0, deg2rad(18)),dc.Polytope(SMatrix{14,3}(A1),SVector{14}(b1)),dc.Polygon(create_n_sided(8,0.8)...,0.15), dc.Cone(3.0, deg2rad(18))]
 
-    P_bot = create_rect_prism_quat(;len = 20, wid = 5.0, hei = 0.5)[1]
-    P_bot.r = [0,0,0.25]
-    P_top = create_rect_prism_quat(;len = 20, wid = 5.0, hei = 0.5)[1]
-    P_top.r = [0,0,6.75]
+    P_bot = create_rect_prism_quat(;len = 20, wid = 5.0, hei = 0.2)[1]
+    P_bot.r = [0,0,0.9]
+    P_top = create_rect_prism_quat(;len = 20, wid = 5.0, hei = 0.2)[1]
+    P_top.r = [0,0,6.0]
     P_obs = [dc.Cylinder(0.6,3.0), dc.Capsule(0.2,5.0), dc.Sphere(0.8),
          dc.Cone(2.0, deg2rad(22)),dc.Polytope(SMatrix{8,3}(A2),SVector{8}(b2)),dc.Polygon(create_n_sided(5,0.6)...,0.2),
          dc.Cylinder(1.1,2.3), dc.Capsule(0.8,1.0), dc.Sphere(0.5), P_bot, P_top]
@@ -443,11 +443,11 @@ let
     sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.1)
     mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
     mc.setvisible!(vis["/Grid"],false)
-    dc.set_floor!(vis; x = 20, y = 20)
+    # dc.set_floor!(vis; x = 20, y = 20, darkmode = false)
 
 
     # @show length(P_obs)
-    coll = shuffle(range(HSV(0,0.5,1), stop=HSV(-360,0.5,1), length=9)) # inverse rotation
+    coll = shuffle(range(HSV(0,0.7,.75), stop=HSV(-360,0.7,.75), length=9)) # inverse rotation
 
     for i = 1:9
         name = "P" * string(i)
@@ -456,37 +456,45 @@ let
     end
     for i = 10:11
         name = "P" * string(i)
-        dc.build_primitive!(vis, P_obs[i], name; α = 1.0,color = mc.RGBA(.2,.2,.2, 1.0))
+        dc.build_primitive!(vis, P_obs[i], name; α = 1.0,color = mc.RGBA(.6,.6,.6, 1.0))
         dc.update_pose!(vis[name],P_obs[i])
     end
 
     # build actual vehicle
-    dc.build_primitive!(vis, P_vic, :vic; α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
+    # dc.build_primitive!(vis, P_vic, :vic; α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
     # dc.build_primitive!(vis, P_vic, :vic; α = 1.0,color = LCHab(70,70,720))
     # # visualize trajectory
-    vis_traj!(vis, :traj, X; R = 0.1, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))
-    anim = mc.Animation(floor(Int,1/dt))
-    mc.setprop!(vis["/Lights/AmbientLight/<object>"], "intensity", 0.6)
-    mc.setprop!(vis["/Cameras/default/rotated/<object>"], "zoom", 1.0)
+    vis_traj!(vis, :traj, X; R = 0.07, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))
+    # anim = mc.Animation(floor(Int,1/dt))
+    mc.setprop!(vis["/Lights/AmbientLight/<object>"], "intensity", 0.7)
+    # mc.setprop!(vis["/Cameras/default/rotated/<object>"], "zoom", 1.0)
+    c2 = [245, 155, 66]/255
+    N_interp = 5
+    Xs = [SVector{3}(X[k][1:3]) for k = 1:N]
+    Xs = cubic_spline_interpolation(1:N, Xs)
 
+    for k = range(1,N,length = N_interp)
+        dc.build_primitive!(vis, P_vic, "Pvic"*string(k) ; α = 1.0,color = mc.RGBA(c2..., 1.0))
+        mc.settransform!(vis["Pvic"*string(k)], mc.Translation(Xs(k)))
+    end
 
     for i = 1:length(P_obs)
         name = "P" * string(i)
         mc.settransform!(vis[name], mc.Translation(P_obs[i].r) ∘ mc.LinearMap(dc.dcm_from_q(P_obs[i].q)))
     end
 
-    for k = 1:N
-        mc.atframe(anim, k) do
-             # mc.settransform!(vis["/Cameras/default"], mc.Translation(cam_ps[k]))
-            # for i = 1:length(P_obs)
-            #     name = "P" * string(i)
-            #     mc.settransform!(vis[name], mc.Translation(P_obs[i].r - X[k][1:3]) ∘ mc.LinearMap(dc.dcm_from_q(P_obs[i].q)))
-            #
-            # end
-            # mc.settransform!(vis[:floor], mc.Translation(-X[k][1:3]))
-            # mc.settransform!(vis[:traj], mc.Translation(-X[k][1:3]))
-            mc.settransform!(vis[:vic], mc.Translation(X[k][1:3]))
-        end
-    end
-    mc.setanimation!(vis, anim)
+    # for k = 1:N
+    #     mc.atframe(anim, k) do
+    #          # mc.settransform!(vis["/Cameras/default"], mc.Translation(cam_ps[k]))
+    #         # for i = 1:length(P_obs)
+    #         #     name = "P" * string(i)
+    #         #     mc.settransform!(vis[name], mc.Translation(P_obs[i].r - X[k][1:3]) ∘ mc.LinearMap(dc.dcm_from_q(P_obs[i].q)))
+    #         #
+    #         # end
+    #         # mc.settransform!(vis[:floor], mc.Translation(-X[k][1:3]))
+    #         # mc.settransform!(vis[:traj], mc.Translation(-X[k][1:3]))
+    #         mc.settransform!(vis[:vic], mc.Translation(X[k][1:3]))
+    #     end
+    # end
+    # mc.setanimation!(vis, anim)
 end

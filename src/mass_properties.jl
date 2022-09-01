@@ -29,3 +29,20 @@ function mass_properties(capsule::Union{Capsule{T},CapsuleMRP{T}}; ρ = 1.0) whe
 
     return m, Diagonal(SA[Ixx,Iyy,Izz])
 end
+
+function mass_properties(cylinder::Union{Cylinder{T},CylinderMRP{T}}; ρ = 1.0) where {T}
+    # https://www.gamedev.net/tutorials/programming/math-and-physics/capsule-inertia-tensor-r3856/
+    R = cylinder.R
+    L = cylinder.L
+    V = pi*(cylinder.R^2)*cylinder.L
+    m = V * ρ
+    # m_hs = V_hs * ρ
+
+    # Ixx = m_cyl*R^2/2 + 2*m_hs*(2*R^2/5)
+    # Iyy = m_cyl * (L^2/12 + R^2/4) + 2 * m_hs * (2*R^2/5 + L^2/2 + 3*L*R/8)
+    # Izz = m_cyl * (L^2/12 + R^2/4) + 2 * m_hs * (2*R^2/5 + L^2/2 + 3*L*R/8)
+    Ixx = 0.5*m*R^2
+    Iyy = (m/12)*(2*R^2 + L^2)
+    Izz = (m/12)*(2*R^2 + L^2)
+    return m, Diagonal(SA[Ixx,Iyy,Izz])
+end

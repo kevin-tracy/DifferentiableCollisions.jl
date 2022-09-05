@@ -230,14 +230,22 @@ function ineq_con_x(p,x)
     vcat(contacts...)
 end
 function ineq_con_x_jac(p,x)
+    rx,ry,vx,vy,θ,ω = x
+
+    dp_dθ = [0,0,1]*(1/(4*cos(θ/4)^2))
+
+    p.P_vic.r = SVector{3}([x[1:2];0])
+    p.P_vic.p = SVector{3}([0,0,1]*tan(x[5]/4))
+    Js = [-Matrix(reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[i])[3][4,1:6],1,6)) for i = 1:3]
+    contact_J = [[reshape(Js[i][1,1:2],1,2) 0 0 (reshape(Js[i][1,4:6],1,3))*dp_dθ 0] for i = 1:3]
     # FD.jacobian(_x -> ineq_con_x(p,_x),x)
-    FD2.finite_difference_jacobian(_x -> ineq_con_x(p,_x),x)
+    # FD2.finite_difference_jacobian(_x -> ineq_con_x(p,_x),x)
     # p.P_vic.r = SVector{3}(x[1:3])
     # p.P_vic.p = SVector{3}(x[7:9])
     # J = [-reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[1])[3][4,1:3],1,3) zeros(1,3)]
     # contact_J = [ [-reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[i])[3][4,1:3],1,3) zeros(1,3) -reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[i])[3][4,4:6],1,3) zeros(1,3)] for i = 1:length(p.P_obs)]
     # # @show size(J)
-    # vcat(contact_J...)
+    vcat(contact_J...)
 end
 function eval_mask(μv,huv)
     # active set mask
@@ -357,8 +365,8 @@ let
     nu = 3
     N = 50
     dt = 0.2
-    x0 = [2.0,1.5,0,0,0,0]
-    xg = [3.5,3,0,0,deg2rad(90),0]
+    x0 = [1.0,1.5,0,0,0,0]
+    xg = [3.5,4,0,0,deg2rad(90),0]
     Xref = [copy(xg) for i = 1:N]
     Uref = [zeros(nu) for i = 1:N]
     Q = Diagonal(ones(nx))

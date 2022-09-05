@@ -365,8 +365,8 @@ let
     nu = 3
     N = 50
     dt = 0.2
-    x0 = [1.0,1.5,0,0,0,0]
-    xg = [3.5,4,0,0,deg2rad(90),0]
+    x0 = [1.3,1.5,0,0,0,0]
+    xg = [3.5,3.7,0,0,deg2rad(90),0]
     Xref = [copy(xg) for i = 1:N]
     Uref = [zeros(nu) for i = 1:N]
     Q = Diagonal(ones(nx))
@@ -375,7 +375,7 @@ let
     R = 1*Diagonal([1,1,.01])
 
     # P_vic = dc.ConeMRP(2.0, deg2rad(22))
-    P_vic = dc.CylinderMRP(0.05,1.5)
+    P_vic = dc.CylinderMRP(0.0005,2.60)
 
     P_obs = [create_rect_prism(;len = 3.0, wid = 3.0, hei = 1.0)[1],
              create_rect_prism(;len = 4.0, wid = 1.0, hei = 1.0)[1],
@@ -440,6 +440,7 @@ let
     K = [zeros(nu,nx) for i = 1:N-1] # feedback gain
     Xhist = iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-2,max_iters = 3000,verbose = true,ρ = 1e0, ϕ = 10.0 )
 
+    P_vic = dc.CylinderMRP(0.03,P_vic.L)
     # gr()
     # display(plot(hcat(U...)'))
     # display(plot(hcat(X...)'))

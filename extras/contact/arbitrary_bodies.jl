@@ -14,6 +14,31 @@ using Colors
 using Printf
 using Combinatorics
 
+function create_rect_prism(;len = 20.0, wid = 20.0, hei = 2.0)
+# len = 20.0
+# wid = 20.0
+# hei = 2.0
+
+    ns = [SA[1,0,0.0], SA[0,1,0.0], SA[0,0,1.0],SA[-1,0,0.0], SA[0,-1,0.0], SA[0,0,-1.0]]
+    cs = [SA[len/2,0,0.0], SA[0,wid/2,0.0], SA[0,0,hei/2],SA[-len/2,0,0.0], SA[0,-wid/2,0.0], SA[0,0,-hei/2]]
+
+    A = zeros(6,3)
+    b = zeros(6)
+
+    for i = 1:6
+        A[i,:] = ns[i]'
+        b[i] = dot(ns[i],cs[i])
+    end
+
+    A = SMatrix{6,3}(A)
+    b = SVector{6}(b)
+
+    mass = len*wid*hei
+
+    inertia = (mass/12)*Diagonal(SA[wid^2 + hei^2, len^2 + hei^2, len^2 + wid^2])
+
+    return dc.Polytope(A,b), mass, inertia
+end
 
 include("/Users/kevintracy/.julia/dev/DCOL/extras/contact/variational_utils.jl")
 function trans_part(m,x1,x2,x3,Δt)

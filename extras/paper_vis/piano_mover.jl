@@ -360,7 +360,7 @@ function vis_traj!(vis, name, X; R = 0.1, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))
 end
 # vis = mc.Visualizer()
 # mc.open(vis)
-let
+# let
     nx = 6
     nu = 3
     N = 50
@@ -440,7 +440,7 @@ let
     K = [zeros(nu,nx) for i = 1:N-1] # feedback gain
     Xhist = iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-2,max_iters = 3000,verbose = true,ρ = 1e0, ϕ = 10.0 )
 
-    P_vic = dc.CylinderMRP(0.03,P_vic.L)
+    P_vic = dc.CylinderMRP(0.01,P_vic.L)
     # gr()
     # display(plot(hcat(U...)'))
     # display(plot(hcat(X...)'))
@@ -456,46 +456,48 @@ let
     # mc.setprop!(vis["/Lights/AmbientLight/<object>"], "intensity", 0.9)
     # mc.setprop!(vis["/Lights/PointLightPositiveX/<object>"], "intensity", 0.0)
     # mc.setprop!(vis["/Lights/FillLight/<object>"], "intensity", 0.25)
-    # # mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
+    mc.setprop!(vis["/Background"], "top_color", colorant"white")
     # mc.setvisible!(vis["/Grid"],true)
     # mc.setvisible!(vis["/Background"],false)
-    # # mc.setvisible!(vis["/Axes"],false)
-    # # mc.setvisible!(vis["/Grid"],false)
+    mc.setvisible!(vis["/Axes"],false)
+    mc.setvisible!(vis["/Grid"],false)
+    # mc.setprop!(vis["/Cameras/default/rotated/<object>"], "zoom", 17)
+    # mc.settransform!(vis["/Cameras/default"], mc.Translation(0,-10,0))
     # dc.set_floor!(vis; x = 20, y = 20, darkmode = false)
     #
     #
     # # @show length(P_obs)
-    coll = shuffle(range(HSVA(0,0.7,.75,0.8), stop=HSVA(-200,0.7,.75,0.8), length=4))
-    for i = 1:length(P_obs)
-        dc.build_primitive!(vis, P_obs[i], Symbol("P"*string(i)); α = 1.0,color = coll[i])
+    # coll = shuffle(range(HSVA(0,0.7,.75,0.8), stop=HSVA(-200,0.7,.75,0.8), length=4))
+    wall_w = 0.1
+    P_obs = [create_rect_prism(;len = 4.0 + wall_w, wid = wall_w, hei = .01)[1],
+             create_rect_prism(;len = 3.0, wid = wall_w, hei = .01)[1],
+             create_rect_prism(;len = wall_w, wid = 3.0, hei = .01)[1],
+             create_rect_prism(;len = wall_w, wid = 4.0, hei = .01)[1]]
+
+    P_obs[1].r = SA[2.0+wall_w/2,1,0.0] - [0,wall_w/2,0]
+    P_obs[2].r = SA[1.5,2.0,0] + [0,wall_w/2,0]
+    P_obs[3].r = SA[3,3.5,0] - [wall_w/2,0,0]
+    P_obs[4].r = SA[4,3.0,0] +[wall_w/2,0,0]
+
+    vis = mc.Visualizer()
+    mc.open(vis)
+    for i = 1:4
+        dc.build_primitive!(vis, P_obs[i], Symbol("P"*string(i)); α = 1.0,color = mc.RGBA(0,0,0,1.0))
         dc.update_pose!(vis[Symbol("P"*string(i))],P_obs[i])
     end
-    #
-    # # for i = 1:length(grid_xy)
-    # # for i = 1:length(P_obs)
-    # #     sph_p1 = mc.HyperSphere(mc.Point(grid_xy[i]...,4.0), 0.3)
-    # #     mc.setobject!(vis["s"*string(i)], sph_p1, mc.MeshPhongMaterial(color = mc.RGBA(1.0,0,0,1.0)))
-    # # end
-    #
-    # # build actual vehicle
-    dc.build_primitive!(vis, P_vic, :vic; α = 1.0,color = mc.RGBA(normalize(abs.(randn(3)))..., 1.0))
-    #
-    # # # visualize trajectory
-    # traj_alphas = range(.1,1,length = length(Xhist))
-    # for i = length(Xhist)
-    #     vis_traj!(vis, "traj"*string(i), Xhist[i]; R = 0.07, color = mc.RGBA(1.0, 0.0, 0.0, traj_alphas[i]))
-    # end
-    #
-    # c2 = [245, 155, 66]/255
-    # for k = [1,15,30,45,60]
-    #     dc.build_primitive!(vis, P_vic, "vic"*string(k); α = 1.0,color = mc.RGBA(c2..., 0.7))
-    #     mc.settransform!(vis["vic"*string(k)], mc.Translation(X[k][1:3]) ∘ mc.LinearMap(dc.dcm_from_mrp(X[k][SA[7,8,9]])))
-    # end
-    anim = mc.Animation(floor(Int,1/dt))
-    for k = 1:N
-        mc.atframe(anim, k) do
-            mc.settransform!(vis[:vic], mc.Translation([X[k][1:2];0]) ∘ mc.LinearMap(dc.dcm_from_mrp(SA[0,0,1]*tan(X[k][5]/4))))
-        end
+    # dc.build_primitive!(vis, P_vic, :vic; α = 1.0,color = mc.RGBA(1,0,0,1.0))
+
+    # image stuff
+    for k = [1,20,50]
+        dc.build_primitive!(vis, P_vic, "vic"*string(k); α = 1.0,color = mc.RGBA(1,0,0,.3 + k/100))
+        mc.settransform!(vis["vic"*string(k)], mc.Translation([X[k][1:2];0]) ∘ mc.LinearMap(dc.dcm_from_mrp(SA[0,0,1]*tan(X[k][5]/4))))
     end
-    mc.setanimation!(vis, anim)
-end
+    ## animation stuff
+    # anim = mc.Animation(floor(Int,1/dt))
+    # for k = 1:N
+    #     mc.atframe(anim, k) do
+    #         mc.settransform!(vis[:vic], mc.Translation([X[k][1:2];0]) ∘ mc.LinearMap(dc.dcm_from_mrp(SA[0,0,1]*tan(X[k][5]/4))))
+    #     end
+    # end
+    # mc.setanimation!(vis, anim)
+# end

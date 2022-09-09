@@ -161,7 +161,7 @@ end
 
     h_soc = [0;-U*Q'*r]
 
-    G_soc_top = [0 0 0 -1]
+    G_soc_top = SA[0 0 0 -1]
     G_soc_bot = hcat(-U*Q', (@SVector zeros(3)))
     G_soc = [G_soc_top;G_soc_bot]
     G_ort, h_ort, G_soc, h_soc

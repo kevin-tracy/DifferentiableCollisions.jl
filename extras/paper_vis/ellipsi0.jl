@@ -77,3 +77,5 @@ dc.update_pose!(vis,E2,:e2_big)
 
 sph = mc.HyperSphere(mc.Point(x...),0.07)
 mc.setobject!(vis[:x],sph,  mc.MeshPhongMaterial(color = mc.RGB(1,0,0)))
+
+α2,x2 = dc.proximity(E1,E2)

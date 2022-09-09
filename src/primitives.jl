@@ -70,8 +70,8 @@ mutable struct Ellipsoid{T} <: AbstractPrimitive
 	F::Eigen{T, T, SMatrix{3, 3, T, 9}, SVector{3, T}}
     function Ellipsoid(P::SMatrix{3,3,T,9}) where {T}
         new{T}(
-		SA[1,0,0,0.0],
 		SA[0,0,0.0],
+		SA[1,0,0,0.0],
 		P,
 		SMatrix{3,3}(cholesky(P).U),
 		eigen(P)

@@ -60,3 +60,21 @@ mutable struct PolygonMRP{nh,nh2,T} <: AbstractPrimitiveMRP
         new{nh,nh2,T}(SA[0,0,0.0],SA[0,0,0.0],A,b,R)
     end
 end
+
+mutable struct EllipsoidMRP{T} <: AbstractPrimitiveMRP
+	# x'*Q*x ≦ 1.0
+	r::SVector{3,T}
+    p::SVector{3,T}
+    P::SMatrix{3,3,T,9}
+	U::SMatrix{3,3,T,9}
+	F::Eigen{T, T, SMatrix{3, 3, T, 9}, SVector{3, T}}
+    function Ellipsoid(P::SMatrix{3,3,T,9}) where {T}
+        new{T}(
+		SA[0,0,0.0],
+		SA[0,0,0.0],
+		P,
+		SMatrix{3,3}(cholesky(P).U),
+		eigen(P)
+		)
+    end
+end

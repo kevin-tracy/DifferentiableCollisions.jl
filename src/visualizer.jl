@@ -5,6 +5,17 @@ end
 function update_pose!(vis,P::AbstractPrimitiveMRP)
     mc.settransform!(vis, mc.Translation(P.r) ∘ mc.LinearMap(dcm_from_mrp(P.p)))
 end
+function update_pose!(vis,P::Ellipsoid{T},name) where {T}
+    mc.settransform!(vis[name], mc.Translation(P.r) ∘ mc.LinearMap(dcm_from_q(P.q)*P.F.vectors))
+end
+function update_pose!(vis,P::EllipsoidMRP{T},name) where {T}
+    mc.settransform!(vis[name], mc.Translation(P.r) ∘ mc.LinearMap(dcm_from_mrp(P.p)*P.F.vectors))
+end
+function build_primitive!(vis,P::Union{Ellipsoid{T},EllipsoidMRP{T}},poly_name::Union{Symbol,String};color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
+    e = mc.HyperEllipsoid(mc.Point(0,0,0.0), mc.Vec(α*(sqrt.(1 ./ P.F.values))))
+    mc.setobject!(vis[poly_name], e, mc.MeshPhongMaterial(color = color))
+    return nothing
+end
 
 function build_primitive!(vis,P::Union{Polytope{n,n3,T},PolytopeMRP{n,n3,T}},poly_name::Union{Symbol,String};color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {n,n3,T}
     N = length(P.b)

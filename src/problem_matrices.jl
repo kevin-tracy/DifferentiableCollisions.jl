@@ -152,3 +152,26 @@ end
     n_Q_b = dcm_from_mrp(p)
     cylinder_problem_matrices(cylinder.R,cylinder.L,r,n_Q_b)
 end
+
+
+# Ellipsoid
+@inline function ellipsoid_problem_matrices(U::SMatrix{3,3,T1,9},Q::SMatrix{3,3,T2,9},r::SVector{3,T3}) where {T1,T2,T3}
+    h_ort = SArray{Tuple{0}, Float64, 1, 0}(())
+    G_ort = SArray{Tuple{0, 4}, Float64, 2, 0}(())
+
+    h_soc = [0;-U*Q'*r]
+
+    G_soc_top = [0 0 0 -1]
+    G_soc_bot = hcat(-U*Q', (@SVector zeros(3)))
+    G_soc = [G_soc_top;G_soc_bot]
+    G_ort, h_ort, G_soc, h_soc
+end
+
+@inline function problem_matrices(ellipsoid::Ellipsoid{T},r::SVector{3,T1},q::SVector{4,T2}) where {T,T1,T2}
+    n_Q_b = dcm_from_q(q)
+    ellipsoid_problem_matrices(ellipsoid.U, n_Q_b, r)
+end
+@inline function problem_matrices(ellipsoid::EllipsoidMRP{T},r::SVector{3,T1},p::SVector{3,T2}) where {T,T1,T2}
+    n_Q_b = dcm_from_mrp(p)
+    ellipsoid_problem_matrices(ellipsoid.U, n_Q_b, r)
+end

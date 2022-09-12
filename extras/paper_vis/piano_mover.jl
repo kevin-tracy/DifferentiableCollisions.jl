@@ -363,19 +363,20 @@ end
 # let
     nx = 6
     nu = 3
-    N = 50
-    dt = 0.2
-    x0 = [1.3,1.5,0,0,0,0]
+    N = 100
+    dt = 0.1
+    x0 = [1.5,1.5,0,0,0,0]
     xg = [3.5,3.7,0,0,deg2rad(90),0]
     Xref = [copy(xg) for i = 1:N]
     Uref = [zeros(nu) for i = 1:N]
     Q = Diagonal(ones(nx))
     # Q = Diagonal([1,1,.1,.1,10,.1])
     Qf = Diagonal(ones(nx))
-    R = 1*Diagonal([1,1,.01])
+    R = 1*Diagonal([1,1,.001])
 
     # P_vic = dc.ConeMRP(2.0, deg2rad(22))
-    P_vic = dc.CylinderMRP(0.0005,2.60)
+    # P_vic = dc.CylinderMRP(0.0005,2.60)
+    P_vic = create_rect_prism(;len = 2.5, wid = 0.1, hei = 0.01)[1]
 
     P_obs = [create_rect_prism(;len = 3.0, wid = 3.0, hei = 1.0)[1],
              create_rect_prism(;len = 4.0, wid = 1.0, hei = 1.0)[1],
@@ -440,7 +441,7 @@ end
     K = [zeros(nu,nx) for i = 1:N-1] # feedback gain
     Xhist = iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-2,max_iters = 3000,verbose = true,ρ = 1e0, ϕ = 10.0 )
 
-    P_vic = dc.CylinderMRP(0.01,P_vic.L)
+    # P_vic = dc.CylinderMRP(0.01,P_vic.L)
     # gr()
     # display(plot(hcat(U...)'))
     # display(plot(hcat(X...)'))
@@ -488,16 +489,17 @@ end
     # dc.build_primitive!(vis, P_vic, :vic; α = 1.0,color = mc.RGBA(1,0,0,1.0))
 
     # image stuff
-    for k = [1,20,50]
-        dc.build_primitive!(vis, P_vic, "vic"*string(k); α = 1.0,color = mc.RGBA(1,0,0,.3 + k/100))
-        mc.settransform!(vis["vic"*string(k)], mc.Translation([X[k][1:2];0]) ∘ mc.LinearMap(dc.dcm_from_mrp(SA[0,0,1]*tan(X[k][5]/4))))
-    end
-    ## animation stuff
-    # anim = mc.Animation(floor(Int,1/dt))
-    # for k = 1:N
-    #     mc.atframe(anim, k) do
-    #         mc.settransform!(vis[:vic], mc.Translation([X[k][1:2];0]) ∘ mc.LinearMap(dc.dcm_from_mrp(SA[0,0,1]*tan(X[k][5]/4))))
-    #     end
+    # for k = [1,20,50]
+    #     dc.build_primitive!(vis, P_vic, "vic"*string(k); α = 1.0,color = mc.RGBA(1,0,0,.3 + k/100))
+    #     mc.settransform!(vis["vic"*string(k)], mc.Translation([X[k][1:2];0]) ∘ mc.LinearMap(dc.dcm_from_mrp(SA[0,0,1]*tan(X[k][5]/4))))
     # end
-    # mc.setanimation!(vis, anim)
+    # animation stuff
+    dc.build_primitive!(vis, P_vic, :vic; α = 1.0,color = mc.RGBA(1,0,0,1.0))
+    anim = mc.Animation(floor(Int,1/dt))
+    for k = 1:N
+        mc.atframe(anim, k) do
+            mc.settransform!(vis[:vic], mc.Translation([X[k][1:2];0]) ∘ mc.LinearMap(dc.dcm_from_mrp(SA[0,0,1]*tan(X[k][5]/4))))
+        end
+    end
+    mc.setanimation!(vis, anim)
 # end

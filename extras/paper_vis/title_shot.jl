@@ -56,28 +56,35 @@ DCD.update_pose!(vis[:cone],cone)
 DCD.build_primitive!(vis, polytope, :polytope; α = 1.0,color = mc.RGBA(c1..., trans_1))
 DCD.update_pose!(vis[:polytope],polytope)
 
-DCD.set_floor!(vis)
-# DCD.add_axes!(vis,:Nframe, 1.0, 0.02; head_l = 0.1, head_w = 0.05)
+DCD.set_floor!(vis; darkmode = false)
+DCD.add_axes!(vis,:Nframe, 1.0, 0.02; head_l = 0.1, head_w = 0.05)
 
-x_star, α_star = solve_intersect(cone,polytope)
+# x_star, α_star = solve_intersect(cone,polytope)
 
+α_star,x_star = DCD.proximity(cone,polytope)
 
-# DCD.build_primitive!(vis, cone, :cone2; α = α_star,color = mc.RGBA(c2..., trans_2))
-# DCD.update_pose!(vis[:cone2],cone)
-# DCD.build_primitive!(vis, polytope, :polytope2; α = α_star,color = mc.RGBA(c1..., trans_2))
-# DCD.update_pose!(vis[:polytope2],polytope)
+DCD.build_primitive!(vis, cone, :cone2; α = α_star,color = mc.RGBA(c2..., trans_2))
+DCD.update_pose!(vis[:cone2],cone)
+DCD.build_primitive!(vis, polytope, :polytope2; α = α_star,color = mc.RGBA(c1..., trans_2))
+DCD.update_pose!(vis[:polytope2],polytope)
+ambient=0.55
+direction="Positive"
 
-αs = range(1,α_star,30)
-cone_names = [Symbol("cone"*string(i)) for i = 1:length(αs)]
-polytope_names = [Symbol("polytope"*string(i)) for i = 1:length(αs)]
-for i = length(αs)
-    DCD.build_primitive!(vis, cone, cone_names[i]; α = αs[i],color = mc.RGBA(c2..., trans_2))
-    DCD.update_pose!(vis[cone_names[i]],cone)
-    DCD.build_primitive!(vis, polytope, polytope_names[i]; α = αs[i],color = mc.RGBA(c1..., trans_2))
-    DCD.update_pose!(vis[polytope_names[i]],polytope)
-    # mc.setvisible!(vis[cone_names[i]], false)
-    # mc.setvisible!(vis[polytope_names[i]], false)
-end
+mc.setprop!(vis["/Lights/AmbientLight/<object>"], "intensity", ambient)
+mc.setprop!(vis["/Lights/FillLight/<object>"], "intensity", 0.25)
+mc.setprop!(vis["/Lights/PointLight$(direction)X/<object>"], "intensity", 0.85)
+mc.setprop!(vis["/Lights/PointLight$(direction)X/<object>"], "castShadow", true)
+# αs = range(1,α_star,30)
+# cone_names = [Symbol("cone"*string(i)) for i = 1:length(αs)]
+# polytope_names = [Symbol("polytope"*string(i)) for i = 1:length(αs)]
+# for i = length(αs)
+#     DCD.build_primitive!(vis, cone, cone_names[i]; α = αs[i],color = mc.RGBA(c2..., trans_2))
+#     DCD.update_pose!(vis[cone_names[i]],cone)
+#     DCD.build_primitive!(vis, polytope, polytope_names[i]; α = αs[i],color = mc.RGBA(c1..., trans_2))
+#     DCD.update_pose!(vis[polytope_names[i]],polytope)
+#     # mc.setvisible!(vis[cone_names[i]], false)
+#     # mc.setvisible!(vis[polytope_names[i]], false)
+# end
 
 
 # ambient=0.55
@@ -89,15 +96,15 @@ end
 # mc.setprop!(vis["/Lights/PointLight$(direction)X/<object>"], "castShadow", true)
 
 # mc.setprop!(vis["/Background"], "top_color", color = mc.RGBA(1,0,0.0, 1.0))
-mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
-
-anim = mc.Animation(floor(Int,1/0.1))
-
+# mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
+#
+# anim = mc.Animation(floor(Int,1/0.1))
+#
 sph_p1 = mc.HyperSphere(mc.Point(x_star...), 0.1)
 mc.setobject!(vis[:pooint1], sph_p1,mc.MeshPhongMaterial(color = mc.RGBA(1.0,0,0,1.0)))
-
-
-# for k = 1:(2*length(αs))
+#
+#
+# # for k = 1:(2*length(αs))
 #     mc.atframe(anim, k) do
 #         if k <= length(αs)
 #             for i = 1:length(αs)

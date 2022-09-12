@@ -337,7 +337,7 @@ function iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-5,max_iters = 25,verbose = true,�
             convio = max(convio, norm(hxv,Inf))
 
             @show convio
-            if convio <1e-4
+            if convio <1e-3
                 @info "success!"
                 return Xhist[1:(iter + 1)]
             end
@@ -363,7 +363,7 @@ end
 # let
     nx = 6
     nu = 3
-    N = 100
+    N = 80
     dt = 0.1
     x0 = [1.5,1.5,0,0,0,0]
     xg = [3.5,3.7,0,0,deg2rad(90),0]
@@ -376,7 +376,7 @@ end
 
     # P_vic = dc.ConeMRP(2.0, deg2rad(22))
     # P_vic = dc.CylinderMRP(0.0005,2.60)
-    P_vic = create_rect_prism(;len = 2.5, wid = 0.1, hei = 0.01)[1]
+    P_vic = create_rect_prism(;len = 2.5, wid = 0.15, hei = 0.01)[1]
 
     P_obs = [create_rect_prism(;len = 3.0, wid = 3.0, hei = 1.0)[1],
              create_rect_prism(;len = 4.0, wid = 1.0, hei = 1.0)[1],
@@ -439,7 +439,7 @@ end
     p = [zeros(nx) for i = 1:N]      # cost to go linear term
     d = [zeros(nu) for i = 1:N-1]    # feedforward control
     K = [zeros(nu,nx) for i = 1:N-1] # feedback gain
-    Xhist = iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-2,max_iters = 3000,verbose = true,ρ = 1e0, ϕ = 10.0 )
+    Xhist = iLQR(params,X,U,P,p,K,d,Xn,Un;atol=4e-2,max_iters = 3000,verbose = true,ρ = 1e0, ϕ = 10.0 )
 
     # P_vic = dc.CylinderMRP(0.01,P_vic.L)
     # gr()

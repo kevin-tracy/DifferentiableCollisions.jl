@@ -189,16 +189,3 @@ function solve_socp(c::SVector{nx,T},
 
 
 end
-
-
-# function tt()
-#
-#     c,G,h,idx_ort,idx_soc1,idx_soc2 = build_pr()
-#
-#     x,s,z = solve_socp(c,G,h,idx_ort,idx_soc1,idx_soc2;verbose = true, pdip_tol = 1e-12)
-#
-#     @btime solve_socp($c,$G,$h,$idx_ort,$idx_soc1,$idx_soc2; verbose = false)
-#
-# end
-#
-# tt()

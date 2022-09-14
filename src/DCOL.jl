@@ -4,7 +4,6 @@ module DCOL
 using LinearAlgebra
 using StaticArrays
 using Printf
-using BenchmarkTools
 import Polyhedra
 import MeshCat as mc
 import ForwardDiff

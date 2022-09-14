@@ -1,50 +1,4 @@
-# cd("/Users/kevintracy/.julia/dev/DCD")
-# import Pkg; Pkg.activate(".")
-# using LinearAlgebra
-# using StaticArrays
-# using JLD2
-# using BenchmarkTools
-# using Printf
-# import DCD
 
-# function build_pr()
-#     @load "/Users/kevintracy/.julia/dev/DCD/extras/example_socp_2.jld2"
-#
-#     nx = 5
-#     ns = n_ort + n_soc1 + n_soc2
-#     idx_ort = SVector{n_ort}(1:n_ort)
-#     idx_soc1 = SVector{n_soc1}((n_ort + 1):(n_ort + n_soc1))
-#     idx_soc2 = SVector{n_soc2}((n_ort + n_soc1 + 1):(n_ort + n_soc1 + n_soc2))
-#
-#     c = SA[0,0,0,1,0.0]
-#
-#     return c, SMatrix{ns,nx}(G), SVector{ns}(h), idx_ort, idx_soc1, idx_soc2
-# end
-#
-# @inline function ort_linesearch(x::SVector{n,T},dx::SVector{n,T}) where {n,T}
-#     # this returns the max α ∈ [0,1] st (x + Δx > 0)
-#     α = 1.0
-#     for i = 1:length(x)
-#         if dx[i]<0
-#             α = min(α,-x[i]/dx[i])
-#         end
-#     end
-#     return α
-# end
-#
-# @inline function soc_linesearch(y::SVector{n,T},Δ::SVector{n,T}) where {n,T}
-#     v_idx = SVector{n-1}(2:n)
-#     yv = y[v_idx]
-#     Δv = Δ[v_idx]
-#     ν = max(y[1]^2 - dot(yv,yv), 1e-25) + 1e-13
-#     ζ = y[1]*Δ[1] - dot(yv,Δv)
-#     ρ = [ζ/ν; (Δv/sqrt(ν) - ( ( (ζ/sqrt(ν)) + Δ[1] )/( y[1]/sqrt(ν) + 1 ) )*(yv/ν))]
-#     if norm(ρ[v_idx])>ρ[1]
-#         return min(1.0, 1/(norm(ρ[v_idx]) - ρ[1]))
-#     else
-#         return 1.0
-#     end
-# end
 @inline function ort_linesearch(x::SVector{n,T},dx::SVector{n,T}) where {n,T}
     # this returns the max α ∈ [0,1] st (x + Δx > 0)
     α = 1.0
@@ -215,7 +169,7 @@ function solve_socp(c::SVector{nx,T},
         Δs = W*(λ_ds - W*Δz)
 
         # final line search (.99 to avoid hitting edge of cone)
-        α = min(1,0.99*min(linesearch(s,Δs,idx_ort,idx_soc1,idx_soc2), 0.99*linesearch(z,Δz,idx_ort,idx_soc1,idx_soc2)))
+        α = min(1,0.99*min(linesearch(s,Δs,idx_ort,idx_soc1,idx_soc2), linesearch(z,Δz,idx_ort,idx_soc1,idx_soc2)))
 
         # take step
         x += α*Δx

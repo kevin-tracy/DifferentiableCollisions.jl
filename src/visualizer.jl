@@ -11,6 +11,21 @@ end
 function update_pose!(vis,P::EllipsoidMRP{T},name) where {T}
     mc.settransform!(vis[name], mc.Translation(P.r) ∘ mc.LinearMap(dcm_from_mrp(P.p)*P.F.vectors))
 end
+
+function vis_traj!(vis, name, X; R = 0.1, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))
+    for i = 1:(length(X)-1)
+        a = X[i][1:3]
+        b = X[i+1][1:3]
+        cyl = mc.Cylinder(mc.Point(a...), mc.Point(b...), R)
+        mc.setobject!(vis[name]["p"*string(i)], cyl, mc.MeshPhongMaterial(color=color))
+    end
+    for i = 1:length(X)
+        a = X[i][1:3]
+        sph = mc.HyperSphere(mc.Point(a...), R)
+        mc.setobject!(vis[name]["s"*string(i)], sph, mc.MeshPhongMaterial(color=color))
+    end
+end
+
 function build_primitive!(vis,P::Union{Ellipsoid{T},EllipsoidMRP{T}},poly_name::Union{Symbol,String};color = mc.RGBA(0.7, 0.7, 0.7, 1.0), α = 1) where {T}
     e = mc.HyperEllipsoid(mc.Point(0,0,0.0), mc.Vec(α*(sqrt.(1 ./ P.F.values))))
     mc.setobject!(vis[poly_name], e, mc.MeshPhongMaterial(color = color))

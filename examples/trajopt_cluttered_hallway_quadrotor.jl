@@ -15,22 +15,7 @@ import Random
 using Colors
 import Random
 using JLD2
-# add altro
 include(joinpath(@__DIR__,"simple_altro.jl"))
-# using LinearAlgebra
-# using StaticArrays
-# import ForwardDiff as FD
-# import FiniteDiff as FD2
-# using Printf
-# using SparseArrays
-# import MeshCat as mc
-# import DCOL as dc
-# using JLD2
-# using Interpolations
-# # using MATLAB
-# # import DifferentialProximity as dp
-# import Random
-# using Colors
 
 
 function skew(ω::Vector{T}) where {T}
@@ -39,6 +24,7 @@ function skew(ω::Vector{T}) where {T}
             -ω[2] ω[1] 0]
 end
 function dynamics(params::NamedTuple,x,u,k_iter)
+    # quadrotor dynamics with an MRP for attitude
     r = x[1:3]
     v = x[4:6]
     p = x[7:9]
@@ -96,22 +82,24 @@ function ineq_con_u_jac(params,u)
     Array(float([I(nu);-I(nu)]))
 end
 function ineq_con_x(p,x)
-    # [x-p.x_max;-x + p.x_min]
-    # [p.obstacle_R^2 - norm(x[1:3] - p.obstacle)^2]
+    # update P_vic struct with the position and attitude
     p.P_vic.r = SVector{3}(x[1:3])
     p.P_vic.p = SVector{3}(x[7:9])
-    contacts= [(1 - dc.proximity(p.P_vic, p.P_obs[i])[1]) for i = 1:length(p.P_obs)]
-    # [1 - dc.proximity(p.P_vic, p.P_obs[1])[1]]
-    vcat(contacts...)
+
+    # (1 - α ≤ 0) for all pairs of P_vic and P_obs[i]
+    return [(1 - dc.proximity(p.P_vic, p.P_obs[i])[1]) for i = 1:length(p.P_obs)]
 end
 function ineq_con_x_jac(p,x)
-    # FD2.finite_difference_jacobian(_x -> ineq_con_x(p,_x),x)
+    # update P_vic struct with the position and attitude
     p.P_vic.r = SVector{3}(x[1:3])
     p.P_vic.p = SVector{3}(x[7:9])
-    # # J = [-reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[1])[3][4,1:3],1,3) zeros(1,3)]
-    contact_J = [ [-reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[i])[3][4,1:3],1,3) zeros(1,3) -reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[i])[3][4,4:6],1,3) zeros(1,3)] for i = 1:length(p.P_obs)]
-    # # # @show size(J)
-    vcat(contact_J...)
+
+    # calculate all of the jacobians from DCOL
+    Js = [dc.proximity_jacobian(p.P_vic, p.P_obs[i])[3] for i = 1:length(p.P_obs)]
+
+    # pull out the stuff we need for each constraint and stack it up
+    contact_J = [ [-reshape(Js[i][4,1:3],1,3) zeros(1,3) -reshape(Js[i][4,4:6],1,3) zeros(1,3)] for i = 1:length(p.P_obs)]
+    return vcat(contact_J...)
 end
 
 function linear_interp(dt,x0,xg,N)
@@ -144,20 +132,10 @@ let
     obstacle = zeros(3)
     obstacle_R = 2.0
 
-    # P_vic = dc.ConeMRP(0.5, deg2rad(22))
+    # create out "quadrotor" where we model it as a sphere
     P_vic = dc.SphereMRP(0.25)
 
-    # P_obs = [dc.Sphere(1.6), dc.Capsule(1.0,3.0), dc.Cylinder(0.8,4.0), dc.Cone()]
-
     @load "/Users/kevintracy/.julia/dev/DifferentialProximity/extras/polyhedra_plotting/polytopes.jld2"
-    # P_obs = [dc.Cylinder(0.6,3.0), dc.Capsule(0.2,5.0), dc.Sphere(0.8),
-    #      dc.Cone(2.0, deg2rad(22)),dc.Polytope(SMatrix{8,3}(A2),SVector{8}(b2)),dc.Polygon(create_n_sided(5,0.6)...,0.2),
-    #      dc.Cylinder(1.1,2.3), dc.Capsule(0.8,1.0), dc.Sphere(0.5)]
-    #           dc.Cone(3.0, deg2rad(18)),dc.Polytope(SMatrix{14,3}(A1),SVector{14}(b1)),dc.Polygon(create_n_sided(8,0.8)...,0.15),
-    #           dc.Cylinder(0.6,3.0), dc.Capsule(0.2,5.0), dc.Sphere(0.8),
-    #                dc.Cone(2.0, deg2rad(22)),dc.Polytope(SMatrix{8,3}(A2),SVector{8}(b2)),dc.Polygon(create_n_sided(5,0.6)...,0.2),
-    #                dc.Cylinder(1.1,2.3), dc.Capsule(0.8,1.0), dc.Sphere(0.5),
-    #                      dc.Cone(3.0, deg2rad(18)),dc.Polytope(SMatrix{14,3}(A1),SVector{14}(b1)),dc.Polygon(n_sided(8,0.8)...,0.15), dc.Cone(3.0, deg2rad(18))]
 
     P_bot = dc.create_rect_prism(20, 5.0, 0.2)[1]
     P_bot.r = [0,0,0.9]
@@ -166,28 +144,17 @@ let
     P_obs = [dc.CylinderMRP(0.6,3.0), dc.CapsuleMRP(0.2,5.0), dc.SphereMRP(0.8),
          dc.ConeMRP(2.0, deg2rad(22)),dc.PolytopeMRP(SMatrix{8,3}(A2),SVector{8}(b2)),dc.PolygonMRP(dc.create_n_sided(5,0.6)...,0.2),
          dc.CylinderMRP(1.1,2.3), dc.CapsuleMRP(0.8,1.0), dc.SphereMRP(0.5), P_bot, P_top]
-    # P_obs = [P_obs...,P_bot, P_top]
-    # using Random
-    # @show length(P_obs)
     Random.seed!(1234)
     gr = range(-5,5,length = 9)
-    # grid_xy = vec([SA[i,j] for i = gr, j = gr])
     for i = 1:9
         P_obs[i].r = SA[gr[i], randn() , 3 + 1.0*randn()]
         P_obs[i].p = dc.mrp_from_q(normalize((@SVector randn(4))))
     end
-    # error()
+
+    # control bounds
     u_min = -2000*ones(nu)
     u_max =  2000*ones(nu)
-
-    # state is x y v θ
-    x_min = -2000*ones(nx)
-    x_max =  2000*ones(nx)
-
-
-
     ncx = length(P_obs)
-    # ncx = 2*nx
     ncu = 2*nu
 
     params = (
@@ -201,8 +168,6 @@ let
         Qf = Qf,
         u_min = u_min,
         u_max = u_max,
-        x_min = x_min,
-        x_max = x_max,
         Xref = Xref,
         Uref = Uref,
         dt = dt,
@@ -216,10 +181,6 @@ let
     X = [deepcopy(x0) for i = 1:N]
     U = [(.0001*randn(nu) + Uref[i]) for i = 1:N-1]
 
-    # for i = 1:N-1
-    #     X[i+1] = discrete_dynamics(params,X[i],U[i],i)
-    # end
-
     Xn = deepcopy(X)
     Un = deepcopy(U)
 
@@ -230,15 +191,12 @@ let
     K = [zeros(nu,nx) for i = 1:N-1] # feedback gain
     iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-3,max_iters = 3000,verbose = true,ρ = 1e0, ϕ = 10.0 )
 
-    animation = false
+    animation = true
     if animation
-        # sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.1)
         mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
         mc.setvisible!(vis["/Grid"],false)
         dc.set_floor!(vis; x = 20, y = 20, darkmode = false)
-        #
-        #
-        # # @show length(P_obs)
+
         coll = Random.shuffle(range(HSVA(0,0.5,.75,1.0), stop=HSVA(-360,0.5,.75,1.0), length=9))
         #
         for i = 1:9
@@ -263,29 +221,20 @@ let
         #
         for k = 1:N
             mc.atframe(anim, k) do
-                mc.settransform!(vis["/Cameras/default"], mc.Translation([-4.0,1.5,-0.5]))
                 for i = 1:length(P_obs)
                     name = "P" * string(i)
                     mc.settransform!(vis[name], mc.Translation(P_obs[i].r - X[k][1:3]) ∘ mc.LinearMap(dc.dcm_from_mrp(P_obs[i].p)))
-                #
                 end
                 mc.settransform!(vis[:floor], mc.Translation(-X[k][1:3]))
                 mc.settransform!(vis[:traj], mc.Translation(-X[k][1:3]))
                 mc.settransform!(vis[:vic], mc.LinearMap(1.5*(dc.dcm_from_mrp(X[k][SA[7,8,9]]))))
-                # mc.settransform!(vis[:vic], mc.Translation(X[k][1:3]))
             end
         end
         mc.setanimation!(vis, anim)
     else
-        # sph_p1 = mc.HyperSphere(mc.Point(0,0,0.0), 0.1)
-        # mc.setprop!(vis["/Background"], "top_color", colorant"transparent")
         mc.setvisible!(vis["/Background"],false)
         mc.setvisible!(vis["/Grid"],false)
         mc.setvisible!(vis["/Axes"],false)
-        # dc.set_floor!(vis; x = 20, y = 20, darkmode = false)
-        #
-        #
-        # # @show length(P_obs)
         coll = Random.shuffle(range(HSVA(0,0.5,.9,1.0), stop=HSVA(-340,0.5,.9,1.0), length=9)) # inverse rotation
         #
         for i = 1:9
@@ -301,32 +250,11 @@ let
 
         robot_obj = mc.MeshFileGeometry("/Users/kevintracy/.julia/dev/DCOL/extras/paper_vis/quadrotor.obj")
         robot_mat = mc.MeshPhongMaterial(color=mc.RGBA(0.0, 0.0, 0.0, 1.0))
-        # mc.setobject!(vis[:vic], robot_obj)
         dc.vis_traj!(vis, :traj, X; R = 0.02, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))
 
         for i = [3,26,50,75,98]
             mc.setobject!(vis["vic"*string(i)], robot_obj, robot_mat)
             mc.settransform!(vis["vic"*string(i)], mc.Translation(X[i][1:3]) ∘ mc.LinearMap(1.8*(dc.dcm_from_mrp(X[i][SA[7,8,9]]))))
         end
-        # for i = 1:length(P_obs)
-        #     name = "P" * string(i)
-        #     mc.settransform!(vis[name], mc.Translation(P_obs[i].r) ∘ mc.LinearMap(dc.dcm_from_mrp(P_obs[i].p)))
-        # end
-        #
-        # for k = 1:N
-        #     mc.atframe(anim, k) do
-        #         mc.settransform!(vis["/Cameras/default"], mc.Translation([-4.0,1.5,-0.5]))
-        #         for i = 1:length(P_obs)
-        #             name = "P" * string(i)
-        #             mc.settransform!(vis[name], mc.Translation(P_obs[i].r - X[k][1:3]) ∘ mc.LinearMap(dc.dcm_from_mrp(P_obs[i].p)))
-        #         #
-        #         end
-        #         mc.settransform!(vis[:floor], mc.Translation(-X[k][1:3]))
-        #         mc.settransform!(vis[:traj], mc.Translation(-X[k][1:3]))
-        #         mc.settransform!(vis[:vic], mc.LinearMap(1.5*(dc.dcm_from_mrp(X[k][SA[7,8,9]]))))
-        #         # mc.settransform!(vis[:vic], mc.Translation(X[k][1:3]))
-        #     end
-        # end
-        # mc.setanimation!(vis, anim)
     end
 end

@@ -101,7 +101,7 @@ function backward_pass!(params,X,U,P,p,d,K,reg,μ,μx,ρ,λ)
         d[k] = F\gu
         K[k] = F\Gux
 
-        # Cost-to-go Recurrence
+        # Cost-to-go Recurrence (PSD stabilizing version)
         P[k] = Jxx + K[k]'*Juu*K[k] + (A-B*K[k])'*P[k+1]*(A-B*K[k])
         p[k] = Jx - K[k]'*Ju + K[k]'*Juu*d[k] + (A - B*K[k])'*(p[k+1] - P[k+1]*B*d[k])
         ΔJ += gu'*d[k]
@@ -216,8 +216,8 @@ function iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-3,max_iters = 250,verbose = true,
     Xhist[1] .= X
 
 
-    reg = 1e-6
     reg_min = 1e-6
+    reg = reg_min
     reg_max = 1e2
 
     μ = [zeros(params.ncu) for i = 1:N-1]

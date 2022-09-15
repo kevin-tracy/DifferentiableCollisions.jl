@@ -135,7 +135,13 @@ let
     # create out "quadrotor" where we model it as a sphere
     P_vic = dc.SphereMRP(0.25)
 
-    @load "/Users/kevintracy/.julia/dev/DifferentialProximity/extras/polyhedra_plotting/polytopes.jld2"
+    # @load "/Users/kevintracy/.julia/dev/DifferentialProximity/extras/polyhedra_plotting/polytopes.jld2"
+    path_str = joinpath(dirname(@__DIR__),"test/example_socps/polytopes.jld2")
+    f = jldopen(path_str)
+    A1 = SMatrix{14,3}(f["A1"])
+    b1 = SVector{14}(f["b1"])
+    A2 = SMatrix{8,3}(f["A2"])
+    b2 = SVector{8}(f["b2"])
 
     P_bot = dc.create_rect_prism(20, 5.0, 0.2)[1]
     P_bot.r = [0,0,0.9]
@@ -210,7 +216,7 @@ let
             dc.update_pose!(vis[name],P_obs[i])
         end
 
-        robot_obj = mc.MeshFileGeometry("/Users/kevintracy/.julia/dev/DCOL/extras/paper_vis/quadrotor.obj")
+        robot_obj = mc.MeshFileGeometry(joinpath(@__DIR__,"quadrotor.obj"))
         mc.setobject!(vis[:vic], robot_obj)
         dc.vis_traj!(vis, :traj, X; R = 0.01, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))
         anim = mc.Animation(floor(Int,1/dt))
@@ -248,7 +254,7 @@ let
             dc.update_pose!(vis[name],P_obs[i])
         end
 
-        robot_obj = mc.MeshFileGeometry("/Users/kevintracy/.julia/dev/DCOL/extras/paper_vis/quadrotor.obj")
+        robot_obj = mc.MeshFileGeometry(joinpath(@__DIR__,"quadrotor.obj"))
         robot_mat = mc.MeshPhongMaterial(color=mc.RGBA(0.0, 0.0, 0.0, 1.0))
         dc.vis_traj!(vis, :traj, X; R = 0.02, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))
 

@@ -25,7 +25,7 @@ function create_rect_prism(len = 20.0, wid = 20.0, hei = 2.0; attitude = :MRP)
         error("attitude must be :MRP or :quat")
     end
 end
-function create_n_sided(N::Int64,d::Float32)
+function create_n_sided(N::Int64,d::Float64)
     ns = [ [cos(θ);sin(θ)] for θ = 0:(2*π/N):(2*π*(N-1)/N)]
     A = vcat(transpose.((ns))...)
     b = d*ones(N)

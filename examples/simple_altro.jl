@@ -86,12 +86,18 @@ function backward_pass!(params,X,U,P,p,d,K,reg,μ,μx,ρ,λ)
         gx = Jx + A'*p[k+1]
         gu = Ju + B'*p[k+1]
 
-        Gxx = Jxx + A'*P[k+1]*A
-        Guu = Juu + B'*P[k+1]*B
-        Gux = B'*P[k+1]*A
+        # # un regularized
+        # Gxx = Jxx + A'*P[k+1]*A
+        # Guu = Juu + B'*P[k+1]*B
+        # Gux = B'*P[k+1]*A
+
+        # regularized
+        Gxx = Jxx + A'*(P[k+1] + reg*I)*A
+        Guu = Juu + B'*(P[k+1] + reg*I)*B
+        Gux = B'*(P[k+1] + reg*I)*A
 
         # Calculate Gains
-        F = cholesky(Symmetric(Guu + reg*I))
+        F = cholesky(Symmetric(Guu))
         d[k] = F\gu
         K[k] = F\Gux
 
@@ -131,7 +137,7 @@ function trajectory_AL_cost(params,X,U,μ,μx,ρ,λ)
     J += dot(λ,hxv) + 0.5*ρ*hxv'*hxv
     return J
 end
-function forward_pass!(params,X,U,K,d,ΔJ,Xn,Un,μ,μx,ρ,λ; max_linesearch_iters = 10)
+function forward_pass!(params,X,U,K,d,ΔJ,Xn,Un,μ,μx,ρ,λ; max_linesearch_iters = 20)
 
     N = params.N
     α = 1.0
@@ -212,7 +218,7 @@ function iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-3,max_iters = 250,verbose = true,
 
     reg = 1e-6
     reg_min = 1e-6
-    reg_max = 1e-1
+    reg_max = 1e2
 
     μ = [zeros(params.ncu) for i = 1:N-1]
 

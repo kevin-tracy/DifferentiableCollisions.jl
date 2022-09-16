@@ -1,7 +1,7 @@
 using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."))
+Pkg.activate(joinpath(dirname(@__DIR__), ".."))
 using DCOL
-Pkg.activate(@__DIR__)
+Pkg.activate(dirname(@__DIR__))
 Pkg.instantiate()
 
 using LinearAlgebra
@@ -131,10 +131,12 @@ let
 
     vis = mc.Visualizer()
     mc.open(vis)
-    mc.setvisible!(vis["/Background"],false)
+    # mc.setvisible!(vis["/Background"],false)
+    mc.setprop!(vis["/Background"], "top_color", mc.RGB(1,1,1))
+    mc.setprop!(vis["/Background"], "bottom_color", mc.RGB(1,1,1))
     mc.setvisible!(vis["/Axes"],false)
     mc.setvisible!(vis["/Grid"],false)
-    wall_w = 0.1
+    wall_w = 0.2
     P_obs = [dc.create_rect_prism(4.0 + wall_w, wall_w, .01)[1],
              dc.create_rect_prism(3.0, wall_w, .01)[1],
              dc.create_rect_prism(wall_w, 3.0, .01)[1],
@@ -144,6 +146,7 @@ let
     P_obs[2].r = SA[1.5,2.0,0] + [0,wall_w/2,0]
     P_obs[3].r = SA[3,3.5,0] - [wall_w/2,0,0]
     P_obs[4].r = SA[4,3.0,0] +[wall_w/2,0,0]
+    # dc.set_floor!(vis; darkmode = false)
 
     for i = 1:4
         dc.build_primitive!(vis, P_obs[i], Symbol("P"*string(i)); α = 1.0,color = mc.RGBA(0,0,0,1.0))

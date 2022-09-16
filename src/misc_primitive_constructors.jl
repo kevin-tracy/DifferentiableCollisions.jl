@@ -20,7 +20,7 @@ function create_rect_prism(len = 20.0, wid = 20.0, hei = 2.0; attitude = :MRP)
     if attitude == :MRP
         return PolytopeMRP(A,b), mass, inertia
     elseif attitude == :quat
-        return PolytopeMRP(A,b), mass, inertia
+        return Polytope(A,b), mass, inertia
     else
         error("attitude must be :MRP or :quat")
     end

@@ -1,7 +1,7 @@
 using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."))
+Pkg.activate(joinpath(dirname(@__DIR__), ".."))
 using DCOL
-Pkg.activate(@__DIR__)
+Pkg.activate(dirname(@__DIR__))
 Pkg.instantiate()
 
 using LinearAlgebra
@@ -136,7 +136,7 @@ let
     P_vic = dc.SphereMRP(0.25)
 
     # @load "/Users/kevintracy/.julia/dev/DifferentialProximity/extras/polyhedra_plotting/polytopes.jld2"
-    path_str = joinpath(dirname(@__DIR__),"test/example_socps/polytopes.jld2")
+    path_str = joinpath(dirname(dirname(@__DIR__)),"test/example_socps/polytopes.jld2")
     f = jldopen(path_str)
     A1 = SMatrix{14,3}(f["A1"])
     b1 = SVector{14}(f["b1"])

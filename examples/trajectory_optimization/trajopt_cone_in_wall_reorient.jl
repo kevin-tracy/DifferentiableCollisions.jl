@@ -1,7 +1,7 @@
 using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."))
+Pkg.activate(joinpath(dirname(@__DIR__), ".."))
 using DCOL
-Pkg.activate(@__DIR__)
+Pkg.activate(dirname(@__DIR__))
 Pkg.instantiate()
 
 using LinearAlgebra

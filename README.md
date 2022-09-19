@@ -3,15 +3,15 @@
 </p>
 
 
-A library for differential collision detection between the following convex primitives:
+A library for differential collision detection, as implemented from [Differentiable Collision Detection for a Set of Convex Primitives](https://arxiv.org/abs/2207.00669). DCOL computes collision information between the following convex primitives:
 - polytopes
 - capsules
 - cylinders
 - cones
 - spheres
+- ellipsoids
 - padded polygons
 
-For more details, see our paper on [arXiv](https://arxiv.org/abs/2207.00669).
 
 ## Interface
 DCOL works by creating a struct for each shape, and calling a function to query a proximity value between them.
@@ -25,6 +25,7 @@ capsule  = dc.Capsule(R, L)    # radius R, length L
 cylinder = dc.Cylinder(R, L)   # radius R, length L
 cone     = dc.Cone(H, β)       # height H, half angle β
 sphere   = dc.Sphere(R)        # radius R
+ellips   = dc.Ellipsoid(P)     # x'*P*x ≦ 1
 polygon  = dc.Polygon(A, b, R) # polygon is described by Ay <= b, cushion radius R
 ```
 where all of these structs are ```::AbstractPrimitive```, and use a quaternion for attitude. The position and attitude of a primitive `P1::AbstractPrimitive` are updated in the following way:
@@ -106,3 +107,12 @@ $$
 $$
 
 This problem is a convex optimization problem with conic constraints, and is solved with a custom primal-dual interior-point method inspired by [cvxopt](http://www.seas.ucla.edu/~vandenbe/publications/coneprog.pdf). If the minimum scaling α > 1, then there is no collision because each primitive had to be scaled up in order to find an intersection. Alternatively, this means that if α ≤ 1, the two primitives are in contact. The solution to this optimization problem can be differentiated with respect to the position and orientation of each primitive using the implicit function theorem. By using a primal-dual interior-point method and returning a solution at a `pdip_tol` of `[1e-4,1e-8]`, the log barrier will effectively smooth out the corners of the primitives to return useful and smooth derivatives.  
+
+## Paper Examples
+
+Examples from [our paper](https://arxiv.org/abs/2207.00669) are available here:
+
+- `examples/trajectory_optimization/piano_mover.jl`
+- `examples/trajectory_optimization/cluttered_hallway_quadrotor.jl`
+- `examples/trajectory_optimization/cone_through_wall.jl`
+- `examples/contact_physics/ncp_contact_simulation.jl`

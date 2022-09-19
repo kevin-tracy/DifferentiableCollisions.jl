@@ -13,7 +13,7 @@ let
     α2,x2 = DCD.proximity(capsule,cone)
     @test abs(α - α2) < 1e-4
     @test norm(x - x2) < 1e-4
-    @btime DCD.proximity($capsule,$cone)
+    # @btime DCD.proximity($capsule,$cone)
     # @info α
 
     α, x, ∂z_∂state = DCD.proximity_jacobian(cone,capsule)
@@ -22,7 +22,7 @@ let
 
     @test norm([∂z_∂state3[:,8:14] ∂z_∂state3[:,1:7]] - ∂z_∂state) < 1e-3
     # @btime DCD.proximity($capsule,$cone)
-    @btime DCD.proximity_jacobian($capsule,$cone)
+    # @btime DCD.proximity_jacobian($capsule,$cone)
 
     # check derivatives
     function fd_α(cone,capsule,r1,q1,r2,q2)

@@ -45,11 +45,11 @@ function ineq_con_x(p,x)
 end
 function ineq_con_x_jac(p,x)
     rx,ry,vx,vy,θ,ω = x
-    dp_dθ = [0,0,1]*(1/(4*cos(θ/4)^2))
+    dp_dθ = SA[0,0,1]*(1/(4*cos(θ/4)^2))
     p.P_vic.r = SVector{3}([x[1:2];0])
     p.P_vic.p = SVector{3}([0,0,1]*tan(x[5]/4))
-    Js = [-Matrix(reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[i])[3][4,1:6],1,6)) for i = 1:3]
-    contact_J = [[reshape(Js[i][1,1:2],1,2) 0 0 (reshape(Js[i][1,4:6],1,3))*dp_dθ 0] for i = 1:3]
+    Js = [dc.proximity_gradient(p.P_vic, p.P_obs[i])[2] for i = 1:length(p.P_obs)]
+    contact_J = [[-Js[i][1:2]' 0 0 -Js[i][4:6]'*dp_dθ 0] for i = 1:3]
     vcat(contact_J...)
 end
 function ineq_con_u(p,u)

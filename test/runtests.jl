@@ -34,3 +34,7 @@ end
 @testset "polytope derivs" begin
     include("polytope_derivs_test.jl")
 end
+
+@testset "lag derivs" begin
+    include("lag_derivs_test.jl")
+end

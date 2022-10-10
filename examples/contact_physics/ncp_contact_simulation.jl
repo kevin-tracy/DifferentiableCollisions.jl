@@ -133,8 +133,7 @@ function contact_kkt(w₋, w, w₊, P, inertias, masses, idx, κ)
     update_objects!(P,w,idx)
     for k = 1:idx.N_interactions
         i,j = idx.interactions[k]
-        _,_,D_state = dc.proximity_jacobian(P[i],P[j]; pdip_tol = 1e-6)
-        D_α = reshape(D_state[4,:],1,14)
+        D_α = reshape(dc.proximity_gradient(P[i],P[j])[2], 1, 14)
         E = h * τ_mod * (D_α*Gbar_2_body(w, idx.z[i], idx.z[j]))'*[λ[k]]
         DELs[i] += E[1:6]
         DELs[j] += E[7:12]
@@ -165,8 +164,7 @@ function contact_kkt_no_α(w₋, w, w₊, P, inertias, masses, idx, κ)
     update_objects!(P,w,idx)
     for k = 1:idx.N_interactions
         i,j = idx.interactions[k]
-        _,_,D_state = dc.proximity_jacobian(P[i],P[j]; pdip_tol = 1e-6)
-        D_α = reshape(D_state[4,:],1,14)
+        D_α = reshape(dc.proximity_gradient(P[i],P[j])[2], 1, 14)
         E = h * τ_mod * (D_α*Gbar_2_body(w, idx.z[i], idx.z[j]))'*[λ[k]]
         DELs[i] += E[1:6]
         DELs[j] += E[7:12]
@@ -210,12 +208,10 @@ function ncp_solve(w₋, w, P, inertias, masses, idx)
         for k = 1:idx.N_interactions
             i,j = idx.interactions[k]
             (dc.proximity(P[i],P[j])[1] - 1)
-            _,_,D_α = dc.proximity_jacobian(P[i],P[j])
-            D_α = reshape(D_α[4,:],1,14)
+            D_α = reshape(dc.proximity_gradient(P[i],P[j])[2], 1, 14)
             D[idx.α[k],idx.z[i]] = -D_α[1,idx.z[1]]
             D[idx.α[k],idx.z[j]] = -D_α[1,idx.z[2]]
         end
-
 
         # use G bar to handle quats, then factorize the matrix
         F = factorize(D*Gbar(w₊,idx))

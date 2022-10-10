@@ -95,11 +95,13 @@ function ineq_con_x_jac(p,x)
     p.P_vic.p = SVector{3}(x[7:9])
 
     # calculate all of the jacobians from DCOL
-    Js = [dc.proximity_jacobian(p.P_vic, p.P_obs[i])[3] for i = 1:length(p.P_obs)]
+    Js = [dc.proximity_gradient(p.P_vic, p.P_obs[i])[2] for i = 1:length(p.P_obs)]
 
-    # pull out the stuff we need for each constraint and stack it up
-    contact_J = [ [-reshape(Js[i][4,1:3],1,3) zeros(1,3) -reshape(Js[i][4,4:6],1,3) zeros(1,3)] for i = 1:length(p.P_obs)]
-    return vcat(contact_J...)
+    # pull out the stuff we need for each constraint
+    contact_J = [ [-Js[i][1:3]' zeros(1,3) -Js[i][4:6]' zeros(1,3)] for i = 1:length(p.P_obs)]
+
+    # stack it all up
+    vcat(contact_J...)
 end
 
 function linear_interp(dt,x0,xg,N)
@@ -195,7 +197,7 @@ let
     p = [zeros(nx) for i = 1:N]      # cost to go linear term
     d = [zeros(nu) for i = 1:N-1]    # feedforward control
     K = [zeros(nu,nx) for i = 1:N-1] # feedback gain
-    iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-3,max_iters = 3000,verbose = true,ρ = 1e0, ϕ = 10.0 )
+    iLQR(params,X,U,P,p,K,d,Xn,Un;atol=1e-2,max_iters = 3000,verbose = true,ρ = 1e0, ϕ = 10.0 )
 
     animation = true
     if animation

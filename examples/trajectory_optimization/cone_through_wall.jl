@@ -63,7 +63,8 @@ end
 function ineq_con_x_jac(p,x)
     p.P_vic.r = SVector{3}(x[1:3])
     p.P_vic.p = SVector{3}(x[7:9])
-    contact_J = [ [-reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[i])[3][4,1:3],1,3) zeros(1,3) -reshape(dc.proximity_jacobian(p.P_vic, p.P_obs[i])[3][4,4:6],1,3) zeros(1,3)] for i = 1:length(p.P_obs)]
+    Js = [dc.proximity_gradient(p.P_vic, p.P_obs[i])[2] for i = 1:length(p.P_obs)]
+    contact_J = [ [-Js[i][1:3]' zeros(1,3) -Js[i][4:6]' zeros(1,3)] for i = 1:length(p.P_obs)]
     vcat(contact_J...)
 end
 

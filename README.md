@@ -39,16 +39,22 @@ P1.q = SA[1.0, 0, 0, 0]  # quaternion ᵂqᴮ
 In cases where a three-parameter attitude parameterization is more convenient, a Modified Rodrigues Parameter (MRP) can be used in the following way:
 ```julia
 P1 = dc.PolytopeMRP(A, b)::AbstractPrimitiveMRP
-P1.r = SA[1,2,3.0]    # position in world frame W
-P1.p = SA[0.0,0,0]    # MRP ᵂpᴮ
+P1.r = SA[1, 2, 3.0]    # position in world frame W
+P1.p = SA[0.0, 0, 0]    # MRP ᵂpᴮ
 ```
 #### Proximity Functions
 DCOL exposes a function `proximity` for collision detection, as well as `proximity_jacobian` for collision detection and derivatives. Two optional arguments are included that pertain to the optimization solver under the hood,  `verbose` turns on logging for this solver, and `pdip_tol` is the termination criteria.
 ```julia
-α,x = dc.proximity(P1, P2; verbose = false, pdip_tol = 1e-6)
-α,x,J = dc.proximity_jacobian(P1, P2; verbose = false, pdip_tol = 1e-6)
+# return min scaling α and intersection x
+α, x = dc.proximity(P1, P2; verbose = false, pdip_tol = 1e-6)
+
+# return min scaling α and gradient of α wrt configurations 
+α, dα_dstate = dc.proximity_gradient(P1, P2; verbose = false, pdip_tol = 1e-6)
+
+# return min scaling α, intersection x, and jacobian J (*)
+α, x, J = dc.proximity_jacobian(P1, P2; verbose = false, pdip_tol = 1e-6)
 ```
-These functions output $\alpha$ as the proximity value, with the following significance:
+These functions output $\alpha$ as the minimum scaling, with the following significance:
 - $\alpha \leq 1$ means there **is** a collision between the two primitives
 - $\alpha >1$ means there **is not** a collision between the two primitives
 
@@ -78,15 +84,15 @@ import Meshcat as mc
 vis = mc.Visualizer()
 mc.open(vis)
 
-cone = dc.Cone(3.0,deg2rad(22))
+cone = dc.Cone(3.0, deg2rad(22))
 cone.r = @SVector randn(3)
 cone.q = normalize((@SVector randn(4)))
 
 # build primitive scaled by α = 1.0
-dc.build_primitive!(vis, cone, :cone; α = 1.0,color = mc.RGBA(1,0,0,1.0))
+dc.build_primitive!(vis, cone, :cone; α = 1.0, color = mc.RGBA(1,0,0,1.0))
 
 # update position and attitude
-dc.update_pose!(vis[:cone],cone)
+dc.update_pose!(vis[:cone], cone)
 ```
 
 ## Algorithm

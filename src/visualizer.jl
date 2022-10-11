@@ -9,15 +9,15 @@ function update_pose!(vis,P::AbstractPrimitiveMRP)
 	attitude = n_Q_b*P.Q_offset
     mc.settransform!(vis, mc.Translation(P.r + n_Q_b*P.r_offset) ∘ mc.LinearMap(attitude))
 end
-function update_pose!(vis,P::Ellipsoid{T},name) where {T}
+function update_pose!(vis,P::Ellipsoid{T}) where {T}
 	n_Q_b = dcm_from_q(P.q)
 	attitude = n_Q_b*P.Q_offset
-    mc.settransform!(vis[name], mc.Translation(P.r + n_Q_b*P.r_offset) ∘ mc.LinearMap(attitude*P.F.vectors))
+    mc.settransform!(vis, mc.Translation(P.r + n_Q_b*P.r_offset) ∘ mc.LinearMap(attitude*P.F.vectors))
 end
-function update_pose!(vis,P::EllipsoidMRP{T},name) where {T}
+function update_pose!(vis,P::EllipsoidMRP{T}) where {T}
 	n_Q_b = dcm_from_mrp(P.p)
 	attitude = n_Q_b*P.Q_offset
-    mc.settransform!(vis[name], mc.Translation(P.r + n_Q_b*P.r_offset) ∘ mc.LinearMap(attitude*P.F.vectors))
+    mc.settransform!(vis, mc.Translation(P.r + n_Q_b*P.r_offset) ∘ mc.LinearMap(attitude*P.F.vectors))
 end
 
 function vis_traj!(vis, name, X; R = 0.1, color = mc.RGBA(1.0, 0.0, 0.0, 1.0))

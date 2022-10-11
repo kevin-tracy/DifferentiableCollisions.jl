@@ -1,9 +1,9 @@
 <p align="center">
-  <img width="320" src="https://github.com/kevin-tracy/DCOL.jl/blob/master/extras/images/DCOL_logo.png">
+  <img width="600" src="https://github.com/kevin-tracy/DCOL.jl/blob/master/extras/images/DCOL_logo.png">
 </p>
 
 
-A library for differential collision detection, as implemented from [Differentiable Collision Detection for a Set of Convex Primitives](https://arxiv.org/abs/2207.00669). DCOL computes collision information between the following convex primitives:
+A library for differential collision detection, as implemented from [Differentiable Collision Detection for a Set of Convex Primitives](https://arxiv.org/abs/2207.00669). The core algorithmn, DCOL, computes collision information between the following convex primitives:
 - polytopes
 - capsules
 - cylinders
@@ -18,7 +18,7 @@ DCOL works by creating a struct for each shape, and calling a function to query 
 #### Primitives
 Each primitive is implemented as a struct in DCOL. The defining dimensions for each primitive is described in the [paper](https://arxiv.org/abs/2207.00669), and the primitives can be constructed as the following:
 ```julia
-import DCOL as dc
+import DifferentiableCollisions as dc
 
 polytope = dc.Polytope(A, b)   # polytope is described by Ax <= b
 capsule  = dc.Capsule(R, L)    # radius R, length L

@@ -1,5 +1,5 @@
 __precompile__(true)
-module DCOL
+module DifferentiableCollisions
 
 using LinearAlgebra
 using StaticArrays

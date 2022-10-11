@@ -5,7 +5,8 @@ using BenchmarkTools
 using SparseArrays
 using JLD2
 
-import DCOL as DCD
+import DifferentiableCollisions as DCD
+const DCOL = DCD
 import FiniteDiff
 import ForwardDiff
 import Random

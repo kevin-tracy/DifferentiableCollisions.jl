@@ -6,8 +6,10 @@ mutable struct PolytopeMRP{n,n3,T} <: AbstractPrimitiveMRP
     p::SVector{3,T}
     A::SMatrix{n,3,T,n3}
     b::SVector{n,T}
+	r_offset::SVector{3,T}
+	Q_offset::SMatrix{3,3,T,9}
     function PolytopeMRP(A::SMatrix{n,3,T,n3}, b::SVector{n,T}) where{n,n3,T}
-        new{n,n3,T}(SA[0,0,0.0],SA[0,0,0.0],A,b)
+        new{n,n3,T}(SA[0,0,0.0],SA[0,0,0.0],A,b,SA[0,0,0.0], SA[1 0 0; 0 1 0; 0 0 1.0])
     end
 end
 
@@ -16,8 +18,10 @@ mutable struct CapsuleMRP{T} <: AbstractPrimitiveMRP
     p::SVector{3,T}
     R::T
     L::T
+	r_offset::SVector{3,T}
+	Q_offset::SMatrix{3,3,T,9}
     function CapsuleMRP(R::T,L::T) where {T}
-        new{T}(SA[0,0,0.0],SA[0,0,0.0],R,L)
+        new{T}(SA[0,0,0.0],SA[0,0,0.0],R,L,SA[0,0,0.0], SA[1 0 0; 0 1 0; 0 0 1.0])
     end
 end
 
@@ -26,8 +30,10 @@ mutable struct CylinderMRP{T} <: AbstractPrimitiveMRP
     p::SVector{3,T}
     R::T
     L::T
+	r_offset::SVector{3,T}
+	Q_offset::SMatrix{3,3,T,9}
     function CylinderMRP(R::T,L::T) where {T}
-        new{T}(SA[0,0,0.0],SA[0,0,0.0],R,L)
+        new{T}(SA[0,0,0.0],SA[0,0,0.0],R,L,SA[0,0,0.0], SA[1 0 0; 0 1 0; 0 0 1.0])
     end
 end
 
@@ -36,8 +42,10 @@ mutable struct ConeMRP{T} <: AbstractPrimitiveMRP
     p::SVector{3,T}
     H::T
     β::T
+	r_offset::SVector{3,T}
+	Q_offset::SMatrix{3,3,T,9}
     function ConeMRP(H::T,β::T) where {T}
-        new{T}(SA[0,0,0.0],SA[0,0,0.0],H,β)
+        new{T}(SA[0,0,0.0],SA[0,0,0.0],H,β,SA[0,0,0.0], SA[1 0 0; 0 1 0; 0 0 1.0])
     end
 end
 
@@ -45,8 +53,10 @@ mutable struct SphereMRP{T} <: AbstractPrimitiveMRP
 	r::SVector{3,T}
     p::SVector{3,T} # not needed
     R::T
+	r_offset::SVector{3,T}
+	Q_offset::SMatrix{3,3,T,9}
     function SphereMRP(R::T) where {T}
-        new{T}(SA[0,0,0.0],SA[0,0,0.0],R)
+        new{T}(SA[0,0,0.0],SA[0,0,0.0],R,SA[0,0,0.0], SA[1 0 0; 0 1 0; 0 0 1.0])
     end
 end
 
@@ -56,8 +66,10 @@ mutable struct PolygonMRP{nh,nh2,T} <: AbstractPrimitiveMRP
     A::SMatrix{nh,2,T,nh2}  # polygon description (Ax≦b)
     b::SVector{nh,T}        # polygon description (Ax≦b)
     R::T                    # "cushion" radius
+	r_offset::SVector{3,T}
+	Q_offset::SMatrix{3,3,T,9}
     function PolygonMRP(A::SMatrix{nh,2,T,nh2},b::SVector{nh,T},R::T) where {nh,nh2,T}
-        new{nh,nh2,T}(SA[0,0,0.0],SA[0,0,0.0],A,b,R)
+        new{nh,nh2,T}(SA[0,0,0.0],SA[0,0,0.0],A,b,R,SA[0,0,0.0], SA[1 0 0; 0 1 0; 0 0 1.0])
     end
 end
 
@@ -68,13 +80,17 @@ mutable struct EllipsoidMRP{T} <: AbstractPrimitiveMRP
     P::SMatrix{3,3,T,9}
 	U::SMatrix{3,3,T,9}
 	F::Eigen{T, T, SMatrix{3, 3, T, 9}, SVector{3, T}}
+	r_offset::SVector{3,T}
+	Q_offset::SMatrix{3,3,T,9}
     function Ellipsoid(P::SMatrix{3,3,T,9}) where {T}
         new{T}(
 		SA[0,0,0.0],
 		SA[0,0,0.0],
 		P,
 		SMatrix{3,3}(cholesky(P).U),
-		eigen(P)
+		eigen(P),
+		SA[0,0,0.0],
+		SA[1 0 0; 0 1 0; 0 0 1.0]
 		)
     end
 end

@@ -39,11 +39,17 @@ end
 end
 @inline function problem_matrices(capsule::Capsule{T},r::SVector{3,T1},q::SVector{4,T2}) where {T,T1,T2}
     n_Q_b = dcm_from_q(q)
-    capsule_problem_matrices(capsule.R,capsule.L,r,n_Q_b)
+    capsule_problem_matrices(capsule.R,
+                             capsule.L,
+                             r + n_Q_b*capsule.r_offset,
+                             n_Q_b*capsule.Q_offset)
 end
 @inline function problem_matrices(capsule::CapsuleMRP{T},r::SVector{3,T1},p::SVector{3,T2}) where {T,T1,T2}
     n_Q_b = dcm_from_mrp(p)
-    capsule_problem_matrices(capsule.R,capsule.L,r,n_Q_b)
+    capsule_problem_matrices(capsule.R,
+                             capsule.L,
+                             r + n_Q_b*capsule.r_offset,
+                             n_Q_b*capsule.Q_offset)
 end
 
 # CONE
@@ -60,11 +66,11 @@ end
 end
 @inline function problem_matrices(cone::Cone{T},r::SVector{3,T1},q::SVector{4,T2}) where {T,T1,T2}
     n_Q_b = dcm_from_q(q)
-    cone_problem_matrices(cone.H,cone.β,r,n_Q_b)
+    cone_problem_matrices(cone.H,cone.β,r + n_Q_b*cone.r_offset, n_Q_b*cone.Q_offset)
 end
 @inline function problem_matrices(cone::ConeMRP{T},r::SVector{3,T1},p::SVector{3,T2}) where {T,T1,T2}
     n_Q_b = dcm_from_mrp(p)
-    cone_problem_matrices(cone.H,cone.β,r,n_Q_b)
+    cone_problem_matrices(cone.H,cone.β,r + n_Q_b*cone.r_offset, n_Q_b*cone.Q_offset)
 end
 
 
@@ -82,15 +88,15 @@ end
 end
 @inline function problem_matrices(polytope::Polytope{n,n3,T},r::SVector{3,T1},q::SVector{4,T2}) where {n,n3,T,T1,T2}
     n_Q_b = dcm_from_q(q)
-    polytope_problem_matrices(polytope.A,polytope.b,r,n_Q_b)
+    polytope_problem_matrices(polytope.A,polytope.b,r + n_Q_b*polytope.r_offset, n_Q_b*polytope.Q_offset)
 end
 @inline function problem_matrices(polytope::PolytopeMRP{n,n3,T},r::SVector{3,T1},p::SVector{3,T2}) where {n,n3,T,T1,T2}
     n_Q_b = dcm_from_mrp(p)
-    polytope_problem_matrices(polytope.A,polytope.b,r,n_Q_b)
+    polytope_problem_matrices(polytope.A,polytope.b,r + n_Q_b*polytope.r_offset, n_Q_b*polytope.Q_offset)
 end
 
 # sphere
-@inline function problem_matrices(sphere::Union{Sphere{T},SphereMRP{T}},r::SVector{3,T1},any_attitude::SVector{n,T2}) where {T,T1,T2,n}
+@inline function sphere_problem_matrices(R::T,r::SVector{3,T1}) where {T,T1}
     h_ort = SArray{Tuple{0}, Float64, 1, 0}(())
     G_ort = SArray{Tuple{0, 4}, Float64, 2, 0}(())
 
@@ -104,6 +110,14 @@ end
                  ]
 
     return G_ort, h_ort, G_soc, h_soc
+end
+@inline function problem_matrices(sphere::Sphere{T},r::SVector{3,T1},q::SVector{4,T2}) where {T,T1,T2}
+    n_Q_b = dcm_from_q(q)
+    sphere_problem_matrices(sphere.R,r + n_Q_b*sphere.r_offset)
+end
+@inline function problem_matrices(sphere::SphereMRP{T},r::SVector{3,T1},p::SVector{3,T2}) where {T,T1,T2}
+    n_Q_b = dcm_from_mrp(p)
+    sphere_problem_matrices(sphere.R,r + n_Q_b*sphere.r_offset)
 end
 
 # padded polygon
@@ -120,11 +134,11 @@ end
 end
 @inline function problem_matrices(polygon::Polygon{n,n3,T},r::SVector{3,T1},q::SVector{4,T2}) where {n,n3,T,T1,T2}
     n_Q_b = dcm_from_q(q)
-    polygon_problem_matrices(polygon.A,polygon.b,polygon.R,r,n_Q_b)
+    polygon_problem_matrices(polygon.A,polygon.b,polygon.R,r + n_Q_b*polygon.r_offset, n_Q_b*polygon.Q_offset)
 end
 @inline function problem_matrices(polygon::PolygonMRP{n,n3,T},r::SVector{3,T1},p::SVector{3,T2}) where {n,n3,T,T1,T2}
     n_Q_b = dcm_from_mrp(p)
-    polygon_problem_matrices(polygon.A,polygon.b,polygon.R,r,n_Q_b)
+    polygon_problem_matrices(polygon.A,polygon.b,polygon.R,r + n_Q_b*polygon.r_offset, n_Q_b*polygon.Q_offset)
 end
 
 
@@ -146,16 +160,16 @@ end
 end
 @inline function problem_matrices(cylinder::Cylinder{T},r::SVector{3,T1},q::SVector{4,T2}) where {T,T1,T2}
     n_Q_b = dcm_from_q(q)
-    cylinder_problem_matrices(cylinder.R,cylinder.L,r,n_Q_b)
+    cylinder_problem_matrices(cylinder.R,cylinder.L,r + n_Q_b*cylinder.r_offset, n_Q_b*cylinder.Q_offset)
 end
 @inline function problem_matrices(cylinder::CylinderMRP{T},r::SVector{3,T1},p::SVector{3,T2}) where {T,T1,T2}
     n_Q_b = dcm_from_mrp(p)
-    cylinder_problem_matrices(cylinder.R,cylinder.L,r,n_Q_b)
+    cylinder_problem_matrices(cylinder.R,cylinder.L,r + n_Q_b*cylinder.r_offset, n_Q_b*cylinder.Q_offset)
 end
 
 
 # Ellipsoid
-@inline function ellipsoid_problem_matrices(U::SMatrix{3,3,T1,9},Q::SMatrix{3,3,T2,9},r::SVector{3,T3}) where {T1,T2,T3}
+@inline function ellipsoid_problem_matrices(U::SMatrix{3,3,T1,9},r::SVector{3,T2},Q::SMatrix{3,3,T3,9}) where {T1,T2,T3}
     h_ort = SArray{Tuple{0}, Float64, 1, 0}(())
     G_ort = SArray{Tuple{0, 4}, Float64, 2, 0}(())
 
@@ -169,9 +183,9 @@ end
 
 @inline function problem_matrices(ellipsoid::Ellipsoid{T},r::SVector{3,T1},q::SVector{4,T2}) where {T,T1,T2}
     n_Q_b = dcm_from_q(q)
-    ellipsoid_problem_matrices(ellipsoid.U, n_Q_b, r)
+    ellipsoid_problem_matrices(ellipsoid.U, r + n_Q_b*ellipsoid.r_offset, n_Q_b*ellipsoid.Q_offset)
 end
 @inline function problem_matrices(ellipsoid::EllipsoidMRP{T},r::SVector{3,T1},p::SVector{3,T2}) where {T,T1,T2}
     n_Q_b = dcm_from_mrp(p)
-    ellipsoid_problem_matrices(ellipsoid.U, n_Q_b, r)
+    ellipsoid_problem_matrices(ellipsoid.U, r + n_Q_b*ellipsoid.r_offset, n_Q_b*ellipsoid.Q_offset)
 end

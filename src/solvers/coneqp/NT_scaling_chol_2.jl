@@ -123,5 +123,5 @@ function calc_NT_scalings(s::SVector{n,T}, z::SVector{n,T}, idx_ort::SVector{n_o
     W_soc2 = soc_NT_scaling(s[idx_soc2],z[idx_soc2])
 
     # W_ort, W_soc
-    NT_scaling_2(W_ort,W_soc1,cholesky(W_soc1), W_soc2, cholesky(W_soc2))
+    NT_scaling_2(W_ort,W_soc1,cholesky(Hermitian(W_soc1)), W_soc2, cholesky(Hermitian(W_soc2)))
 end

@@ -1,6 +1,6 @@
 using Pkg
 Pkg.activate(joinpath(dirname(@__DIR__), ".."))
-using DCOL
+import DifferentiableCollisions as dc
 Pkg.activate(dirname(@__DIR__))
 Pkg.instantiate()
 
@@ -10,7 +10,6 @@ using StaticArrays
 using SparseArrays
 import ForwardDiff as FD
 import MeshCat as mc
-import DCOL as dc
 import Random
 using Colors
 import Random

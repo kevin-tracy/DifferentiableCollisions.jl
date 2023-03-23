@@ -12,6 +12,7 @@ A library for differential collision detection, as implemented from [Differentia
 - ellipsoids
 - padded polygons
 
+A limited version of DCOL is available in Python/JAX as [dpax](https://github.com/kevin-tracy/dpax).
 
 ## Interface
 DCOL works by creating a struct for each shape, and calling a function to query a proximity value between them.
@@ -79,7 +80,7 @@ All of the primitives (both quaternion and MRP) can be visualized in [MeshCat](h
 
 ```julia
 import DCOL as dc
-import Meshcat as mc
+import MeshCat as mc
 
 vis = mc.Visualizer()
 mc.open(vis)

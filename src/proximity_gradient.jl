@@ -35,7 +35,6 @@ end
     G_ort1, h_ort1, G_soc1, h_soc1 = problem_matrices(capsule,r1,p1)
     G_ort2, h_ort2, G_soc2, h_soc2 = problem_matrices(cone,r2,p2)
     c,G,h,_,_,_ = combine_problem_matrices(G_ort1, h_ort1, G_soc1, h_soc1,G_ort2, h_ort2, G_soc2, h_soc2)
-    _,G,h,_,_,_ = combine_problem_matrices(G_ort1, h_ort1, G_soc1, h_soc1,G_ort2, h_ort2, G_soc2, h_soc2)
 
     return z'*(G*x - h)
 end

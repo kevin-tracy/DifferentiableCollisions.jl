@@ -13,7 +13,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 ForwardDiff = "0.10"
-MeshCat = "0.14"
+MeshCat = "0.16"
 Polyhedra = "0.7"
 StaticArrays = "1.5"
 julia = "1"

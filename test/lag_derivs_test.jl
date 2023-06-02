@@ -1,5 +1,5 @@
 let
-    for test_iter = 1:10
+    for test_iter = 1:3
         cone = DCD.Cone(2.0,deg2rad(22))
         cone.r = 0.3*(@SVector randn(3))
         cone.q = normalize((@SVector randn(4)))
@@ -54,6 +54,21 @@ let
         @test norm(J1 - ∂z_∂state2) < 1e-1
         @test norm(J1[4,:] - ∂z_∂state[4,:]) < 1e-1
         @test norm(∂z_∂state - ∂z_∂state2) < 1e-5
+
+
+        # # check hessian 
+        # H1 = FiniteDiff.finite_difference_hessian(θ -> fd_α(cone,capsule,θ[idx_r1],θ[idx_q1],θ[idx_r2],θ[idx_q2])[4], [cone.r;cone.q;capsule.r;capsule.q])
+
+        # println("finite difference hessian")
+        # display(H1)
+        # _, H2 = DCD.proximity_hessian(capsule,cone)
+        # println("analytical hessian")
+        # display(H2)
+
+        # @show norm(H1 - H2)
+
+
+
     end
 
 

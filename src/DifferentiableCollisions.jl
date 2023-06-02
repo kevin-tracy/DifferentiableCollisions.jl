@@ -26,6 +26,7 @@ include("problem_matrices.jl")
 include("combine_problem_matrices.jl")
 include("proximity.jl")
 include("proximity_gradient.jl")
+# include("proximity_hessian.jl")
 
 #
 include("misc_primitive_constructors.jl")

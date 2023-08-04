@@ -2,6 +2,8 @@
   <img width="600" src="https://github.com/kevin-tracy/DCOL.jl/blob/master/extras/images/DCOL_logo.png">
 </p>
 
+[![Paper](http://img.shields.io/badge/arXiv-2207.00669-B31B1B.svg)](https://arxiv.org/abs/2207.00669)
+
 
 A library for differential collision detection, as implemented from [Differentiable Collision Detection for a Set of Convex Primitives](https://arxiv.org/abs/2207.00669). The core algorithmn, DCOL, computes collision information between the following convex primitives:
 - polytopes

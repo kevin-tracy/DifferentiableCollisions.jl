@@ -81,8 +81,10 @@ $$
 All of the primitives (both quaternion and MRP) can be visualized in [MeshCat](https://github.com/rdeits/MeshCat.jl). Below is an example of visualization for a cone:
 
 ```julia
-import DCOL as dc
+import DifferentiableCollisions as dc
 import MeshCat as mc
+using StaticArrays
+using LinearAlgebra
 
 vis = mc.Visualizer()
 mc.open(vis)
